@@ -1,0 +1,9 @@
+0 = 0 Not a priority
+1 = 1 Lowest Priority
+2 = 2 Low Priority
+3 = 3 Somewhat Low priority
+4 = 4 Moderate Priority
+5 = 5 Somewhat High Priority
+6 = 6 High Priority
+7 = 7 Highest Priority
+*       = NULL
