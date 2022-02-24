@@ -66,7 +66,7 @@ def binary_change(before, after, binary_change="binary_change", binary_change_ma
     threshold = mean + (stddev * thres) if thres < 0 else mean - (stddev * thres)
     print(f"Change Threshold: {threshold}")
     
-    mask_expression = f"{binary_change_mask} = if({binary_change} <= {threshold}, 1,0, null())"
+    mask_expression = f"{binary_change_mask} = if({binary_change} <= {threshold}, 1,null())"
     gs.run_command("r.mapcalc", expression=mask_expression, overwrite=True)
     
     
@@ -455,7 +455,7 @@ def priority_change_calc(before_landcover, after_landcover, output):
     
     
     def expression_builder(from_val, to_val, priority):
-            return f"if({classified_before_30m_recl} == {from_val} && {classified_after_30m_recl} == {to_val}, {priority}," # if({new_expression}))"
+            return f"if({before_landcover} == {from_val} && {after_landcover} == {to_val}, {priority}," # if({new_expression}))"
     
    
     class_list = range(0,7)
