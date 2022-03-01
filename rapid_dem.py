@@ -179,6 +179,52 @@ def generate_elevation_figure(elev, filename):
 
     return elev_map.show()
 
+
+def generate_uas_elevation_figures(elev, filename):
+    """
+    Generates a shade png image of an elevation (DTM, DSM)
+    @param elev : string : Name of raster
+    @param filename: string: Name of file
+    """
+    relief = f"{elev}_relief"
+    shaded_relief = f"{elev}_shaded_relief"
+    shadedRelief(elevation=elev,relief=relief, output=shaded_relief)
+    output = f"output/{filename}.png"
+    print(f"Image Save Location: {output}")
+    elev_map = gj.GrassRenderer(height=900, width=900, filename=output)
+    elev_map.d_erase()
+    elev_map.d_rast(map=shaded_relief)
+    # elev_map.d_vect(map="fenton_pq_boundary", fill_color="none", color="white", width="1", legend_label="Fenton (White Area)")
+    elev_map.d_legend(raster=elev, at=(70,90,67,70), title="Elevation (m)",font="FreeSans", title_fontsize=18, fontsize=16, flags="tb", border_color='none')
+    elev_map.d_barscale(at=(16,7), units="meters", flags="n",font="FreeSans", fontsize=24)
+    elev_map.d_grid(size="00:0:56", flags="dw", width=1, color="black",text_color="black",fontsize=12)
+
+    return elev_map.show()
+
+
+def generate_fusion_elevation_figure(elev, filename):
+    """
+    Generates a shade png image of an elevation (DTM, DSM)
+    @param elev : string : Name of raster
+    @param filename: string: Name of file
+    """
+    relief = f"{elev}_relief"
+    shaded_relief = f"{elev}_shaded_relief"
+    shadedRelief(elevation=elev,relief=relief, output=shaded_relief)
+    output = f"output/{filename}.png"
+    print(f"Image Save Location: {output}")
+    elev_map = gj.GrassRenderer(height=900, width=1400, filename=output)
+    elev_map.d_erase()
+    elev_map.d_rast(map=shaded_relief)
+    elev_map.d_legend(raster=elev, at=(5,30,3,5),
+                      title="Elevation (m)",font="FreeSans", border_color="none",
+                      title_fontsize=16, fontsize=14, 
+                      flags="bt")
+    elev_map.d_barscale(at=(18,7), units="meters", flags="n",font="FreeSans")
+    elev_map.d_grid(size="00:00:58", flags="dw", width=1, color="black",text_color="black",fontsize=16)
+
+    return elev_map.show()
+
 def generate_ortho_figure(ortho, filename):
     output = f"output/{filename}.png"
     print(f"Image Save Location: {output}")
@@ -195,6 +241,38 @@ def generate_uas_footprint(elev, output, overwrite=False):
     """
     gs.mapcalc(f"{output} = if(isnull({elev}), null(), 1)")
     gs.run_command("r.to.vect", input=output, output=output, type="area", overwrite=overwrite)
+    
+def create_flight_figure(input_1,title_1, input_2, title_2, input_3, title_3, filename):
+    from PIL import Image
+
+    fig = plt.figure(figsize=(25, 30))
+    
+    ax = fig.add_subplot(1, 3, 1)
+    fig.subplots_adjust(hspace=0, wspace=0.1)
+    ax.set_axis_off()
+    img1 = Image.open(f"output/{input_1}.png")
+    imgplot = plt.imshow(img1)
+    ax.set_title(title_1,{"fontsize":24, "fontweight":"bold"})
+
+    ax = fig.add_subplot(1, 3, 2)
+    ax.set_axis_off()
+    img2 = Image.open(f"output/{input_2}.png")
+    imgplot = plt.imshow(img2)
+    ax.set_title(title_2,{"fontsize":24, "fontweight":"bold"})
+
+    ax = fig.add_subplot(1, 3, 3)
+    ax.set_axis_off()
+
+    img3 = Image.open(f"output/{input_3}.png")
+    imgplot = plt.imshow(img3)
+    # imgplot.set_clim(0.0, 0.7)
+    ax.set_title(title_3,{"fontsize":24, "fontweight":"bold"})
+    
+    output = f"output/{filename}.png"
+    print(f"Image Save Location: {output}")
+    
+    plt.tight_layout()
+    return plt.savefig(output,bbox_inches='tight',dpi=300)
     
     
 """
@@ -473,5 +551,399 @@ def priority_change_calc(before_landcover, after_landcover, output):
     expression+= closing
     gs.mapcalc(f"{output} = {expression}")
     gs.run_command("r.colors", map=output, color="plasma")
-    
+  
 
+"""
+Import UAS Data 
+=================
+"""
+
+def import_uas_data(dtm_input, dtm_output, dsm_input, dsm_output, ortho_input, ortho_output, ortho_composite, laz_input, laz_output, laz_dsm, res=0.5, memory=300, nprocs=1, overwrite=False):
+    """
+    Imports DSM, DTM, Ortho, and point cloud data exported from WebDOM into GRASS GIS.
+    @param dtm_input : string : file location (.tif)
+    @param dtm_output : string : Output file name
+    @param dsm_input : string : file location (.tif)
+    @param dsm_output : string : Output file name
+    @param ortho_input : string : file location (.tif)
+    @param ortho_output : string : Output file name
+    @param ortho_composite: string :  Output file name of composite image
+    @param laz_input : string : file location (.laz)
+    @param laz_output : string : Output file name
+    @param laz_dsm : Output file name of point cloud derived DSM
+    @param laz_be_pc : DOES NOT WORK Output file name of bare earth point cloud
+    @param laz_dem : DOES NOT WORK Output file name of point cloud derived DEM
+    @param res : The the import resolution (Dfault = 0.5)
+    @param memory : Allocate memeory for import steps (Default = 300) 
+    @param nprocs : Allocate total processes used during interpolation (Default = 1) 
+    @param overwrite : Overwrite existing files (Default = False)
+    
+    """
+    print("*" * 100)
+    print("Starting UAS Import")
+    print(f"Setting Region with {res} resolution")
+    gs.run_command("g.region", res=res, flags="ap")
+    
+    print(f"Importing DTM: {dtm_output}")
+
+    gs.run_command("r.import",
+                   input=dtm_input, 
+                   memory=memory,
+                   output=dtm_output,
+                   resample="bilinear",
+                   overwrite=overwrite
+                  )
+    gs.run_command("r.colors", map=dtm_output, color="elevation", flags="e")
+
+
+    print(f"Importing DSM: {dsm_output}")
+    gs.run_command("r.import",
+                   input=dsm_input, 
+                   memory=memory,
+                   output=dsm_output,
+                   resample="bilinear",
+                   overwrite=overwrite
+                  )
+
+    print(f"Importing Ortho: {ortho_output}")
+    gs.run_command("r.import",
+                   input=ortho_input, 
+                   memory=memory,
+                   output=ortho_output,
+                   resample="nearest",
+                   overwrite=overwrite
+                  )
+
+    print(f"Creating Ortho: {ortho_composite}")
+    gs.run_command("g.region", raster=f"{ortho_output}.1", res=res, flags="ap")
+
+    gs.run_command("r.composite",
+                red=f"{ortho_output}.1",
+                green=f"{ortho_output}.2",
+                blue=f"{ortho_output}.3",
+                output=ortho_composite,
+                overwrite=overwrite
+            )
+    
+    print(f"Importing Point Cloud (DSM): {laz_output}")
+    gs.run_command("v.in.pdal",
+                 input=laz_input,
+                 output=laz_output,
+                 flags="w",
+                 # input_srs="EPSG:4326",
+                 overwrite=overwrite
+              )
+    # Set  computaional region to imported raster data
+    gs.run_command("g.region", raster=ortho_composite, res=res, flags="ap")
+    
+    print(f"Generating DSM: {laz_output}")
+    gs.run_command("v.surf.rst",
+                 input=laz_output,
+                 elevation=laz_dsm,
+                 npmin=120,
+                 segmax=25,
+                 tension=100,
+                 smooth=0.5,
+                 dmin=1,
+                 mask=ortho_composite,
+                 nprocs=nprocs,
+                 overwrite=overwrite
+              )
+    
+    print("Import Complete")
+    print("*" * 100)
+    
+def resample_uas_data(dtm, dtm_output, dsm, dsm_output, ortho, ortho_output,red,red_output,green,green_output,blue,blue_output,nir,nir_output, res, overwrite=False):
+    """
+    Resamples UAS data into another resolution.
+    
+    
+    Parameters
+    ==========
+    dtm (str): Input DTM raster name.
+    dtm_output (str): Output DTM raster name.
+    dsm (str): Input DSM raster name.
+    dsm_output (str): Output DSM raster name.
+    ortho (str): Input orthoimage name.
+    ortho_output (str): Output orthoimage name.
+    red (str): Input image red band raster name.
+    red_output (str): Output image red band raster name.
+    green (str): Input image green band raster name.
+    green_output (str): Output image green band raster name.
+    blue (str): Input image blue band raster name.
+    blue_output (str): Output image blue band raster name.
+    nir (str): Input image nir band raster name.
+    nir_output (str): Output image nir band raster name.
+    res (int): Resolution to resample data to
+    overwrite (bool): Overwrite existing files
+    
+    Returns
+    =======
+    dtm_output,dsm_output,ortho_output,red_output,green_output,blue_output,nir_output
+    """
+    # Resample DTM
+    gs.run_command("g.region", raster=dtm, res=res, flags="ap")
+    gs.run_command("r.resamp.interp", input=dtm, output=dtm_output, overwrite=overwrite)
+    # Resample DSM
+    gs.run_command("g.region", raster=dsm, res=res, flags="ap")
+    gs.run_command("r.resamp.interp", input=dsm, output=dsm_output, overwrite=overwrite)
+    # Resample Ortho
+    gs.run_command("g.region", raster=ortho, res=3, flags="ap")
+    gs.run_command("r.resamp.interp", input=ortho, output=ortho_output, method="nearest", overwrite=True)
+    gs.run_command("r.resamp.interp", input=red, output=red_output, method="nearest", overwrite=True)
+    gs.run_command("r.resamp.interp", input=green, output=green_output, method="nearest", overwrite=True)
+    gs.run_command("r.resamp.interp", input=blue, output=blue_output, method="nearest", overwrite=True)
+    gs.run_command("r.resamp.interp", input=nir, output=nir_output, method="nearest", overwrite=True)
+    # Set DTM an DSM color tables
+    gs.run_command("r.colors", map=f"{dtm_output},{dsm_output}", color="elevation", flags="e")
+    
+    return dtm_output,dsm_output,ortho_output,red_output,green_output,blue_output,nir_output
+    
+    
+"""
+Profile DEM data
+=================
+"""
+    
+def profile_dem(dem, output, coords):
+    out = f"output/{output}.csv"
+    gs.run_command("r.profile", flags="gc", input=dem, coordinates=coords, output=out,null_value="0", overwrite=True)
+    gs.run_command("v.in.ascii", input=out, output=output, separator="space", columns="x double,y double,profile double,diff double, color varchar", overwrite=True)
+    # !v.univar map=profile_fenton_shift column=diff
+    df = pd.read_csv(out,delimiter=" ", names=['x','y','profile','diff','color'])
+    return df
+
+
+"""
+Fusion
+=================
+"""
+def geographic_correct_dem(dem,output,row_shift=0, column_shift=0):
+    """
+    Geographic Registration
+    @param dem string Input raster name
+    @param output string Output raster name
+    @param row_shift int (default=-5)
+    @param column_shift int (default=-1)
+    @return output Shifted raster name
+    """
+    print(("#"*25) + " Geographic Shift " + ("#" *25))
+    print(f"Inputs: dem:{dem},output: {output},row_shift: {row_shift}, column_shift: {column_shift}")
+
+    gs.mapcalc(f"{output} = if({dem} >= 0, {dem}[{row_shift},{column_shift}], null())")
+    return output
+
+def import_dsm(output, output_dir, input_srs, resolution, nprocs):
+    gs.run_command(
+        "r.in.usgs",
+        product="lidar",
+        output_name=output,
+        output_directory=output_dir,
+        input_srs=input_srs,
+        resolution=resolution,
+        nprocs=nprocs,
+        flags="k",
+    )
+
+def edge_mask(uas, thres=-1, e=None):
+    print(("#"*25) + " Edge Mask " + ("#" *25))
+    mask = f"{uas}_mask"
+    print(f"UAS Mask: {mask}")
+    gs.mapcalc(f"{mask} = if({uas}, 1, null())")
+    uas_thin = f"{uas}_thin"
+    if e:
+        gs.run_command("g.region", raster=uas)
+        uas_reg = gs.region(uas)
+        e = uas_reg["e"] - e
+        gs.run_command("g.region", e=e)
+
+        # gs.run_command("g.region", n=n, e=e, s=s, w=w)
+        gs.mapcalc(f"{uas_thin} = if({uas}, {uas}, null())")
+    else:
+        thin=f"{mask}_thin" # The thinned mask
+        print(f"Thin UAS Mask: {thin}")
+        gs.run_command("r.grow", overwrite=True, input=mask, output=thin, radius=thres)
+        gs.mapcalc(f"{uas_thin} = if({thin}, {uas}, null())")
+
+    print(f"Thin UAS: {uas_thin}")
+
+    return uas_thin
+
+def ground_dem(uas,uas_vert_c, dem, thres=0.1):
+    """
+    @param uas : UAS Data
+    @param uas_vert_c : Vert Correct UAS
+    @param dem : DEM Data
+    @return ground: 
+    """
+    print(("#"*25) + " Ground DEM " + ("#" *25))
+    ground_dem = "ground_dem"
+    gs.mapcalc(f"{ground_dem} = if({uas_vert_c} - {dem} <= {thres}, {uas},null())") # 1ft
+    print(f"Output: Uncorrected Ground DEM< (UAS_Vert_Corrected - DEM < {thres}): {ground_dem}")
+    ground_dem_point_sample = "ground_dem_point_sample"
+    gs.run_command("r.random", flags="d", input=ground_dem, npoints=20, raster=ground_dem_point_sample, seed=1)
+    return ground_dem_point_sample
+
+def report_diff_stats(raster):
+    univar = gs.parse_command("r.univar", map=raster, flags="ge")
+    mean = float(univar["mean"])
+    stddev = float(univar["stddev"])
+    tb_median = float(univar["median"])
+    dmin = float(univar["min"])
+    dmax = float(univar["max"])
+    print(f"{raster}: Mean: {mean}, STD: {stddev}, Median: {tb_median}, Min: {dmin}, Max: {dmax}")
+    return univar
+
+
+def import_dem(output, output_dir, nprocs):
+    gs.run_command(
+        "r.in.usgs",
+        product="ned",
+        ned_dataset="ned19sec",
+        output_name=output,
+        output_directory=output_dir,
+        nprocs=nprocs,
+    )
+
+
+def resample(uas, dem, match_uas=True):
+    # resample uas to match lidar, or the other way round?
+    print(("#"*25) + " Resample " + ("#" *25))
+
+    resampled = "tmp_resampled"
+    uas_ = uas
+    dem_ = dem
+
+    if not match_uas:
+        print(f"Output Raster: Resampled to Match DEM: {resampled}")
+        gs.run_command("g.region", raster=uas, align=dem)
+        gs.run_command("r.resamp.interp", input=uas, output=resampled)
+        uas_ = resampled
+    else:
+        print(f"Output Raster: Resampled to Match UAS: {resampled}")
+        gs.run_command("g.region", raster=dem, align=uas)
+        gs.run_command("r.resamp.interp", input=dem, output=resampled)
+        dem_ = resampled
+
+    # TMP_RAST.append(resampled)
+    return uas_, dem_
+
+def get_diff(uas, dem, mean_thr, output):
+    # compute difference
+    print(("#"*25) + " Get Diff " + ("#" *25))
+    diff = f"{output}_diff"
+    gs.run_command("g.region", raster=uas)
+    gs.mapcalc(diff + " = " + uas + " - " + dem)
+    print(f"Output Raster: Difference (UAS - DEM): {diff}")
+    # TMP_RAST.append(diff)
+    univar = gs.parse_command("r.univar", map=diff, flags="ge")
+    mean = float(univar["mean"])
+    median = float(univar["median"])
+    stddev = float(univar["stddev"])
+    # print("Difference: {mean:.1f} ± {stddev:.1f}".format(mean=mean, stddev=stddev))
+    # test for systematic shift:
+    print(f"Difference: Mean:{mean}, STD: {stddev}, Median: {median}")
+    _min = float(univar["min"])
+    _max = float(univar["max"])
+    print(f"Range: Min:{_min}, Max: {_max}")
+    if abs(median) > mean_thr:
+        print("Vertical shift is likely.")
+    return diff, median
+
+def vertically_corrected_uas(uas, dem, shift,output):
+    print(("#"*25) + " Vertical Correction " + ("#" *25))
+    print(f"Shifting {uas} by {shift}m")
+    new = f"{output}_vertically_corrected_uas"
+    diff = f"{output}_diff_corrected"
+    gs.mapcalc(f"{new} = {uas} - {shift}")
+    print(f"Output: Vertically Corrected UAS (UAS - Shift): {new}")
+    univar = gs.parse_command("r.univar", map=new, flags="ge")
+    mean = float(univar["mean"])
+    stddev = float(univar["stddev"])
+    median = float(univar["median"])
+    print(f"Vertically Corrected Stats: Mean: {mean}, STD: {stddev}, Median: {median}")
+    # report_diff_stats(new)
+
+    # TMP_RAST.append(new)
+    
+    gs.mapcalc(diff + " = " + new + " - " + dem)
+    print(f"Output: Difference (Vertically Corrected UAS - DEM): {diff}")
+    univar = gs.parse_command("r.univar", map=diff, flags="ge")
+    mean = float(univar["mean"])
+    stddev = float(univar["stddev"])
+    median = float(univar["median"])
+    print(f"Difference (Vertically Corrected UAS - DEM) Stats: Mean: {mean}, STD: {stddev}, Median: {median}")
+    # TMP_RAST.append(diff)
+
+    return new, diff
+
+
+def patch(uas, dem, output,ps,ta,dr):
+    print(("#"*25) + " Patch " + ("#" *25))
+    print(f"Inputs: uas:{uas},dem:{dem},output:{output},ps:{ps},ta:{ta},dr{dr}")
+    overlap = f"{output}_overlap"
+    gs.run_command("g.region", raster=dem)
+    gs.run_command(
+        "r.patch.smooth", input_a=uas, input_b=dem, output=output, 
+        # smooth_dist=10, 
+        overlap=overlap,
+        parallel_smoothing=ps,
+        transition_angle=ta,
+        difference_reach=dr,
+        # blend_mask="fenton_edge_mask_odm_dtm_3m_pmask",
+        flags="s"
+    )
+    print(f"Output: Overlap: {overlap}")
+    print(f"Output: Fused DEM {output}")
+    diff = f"{output}_diff"
+    gs.mapcalc(f"{diff} = {output} - {dem}")
+    print(f"Output: Fused Diff (Fused UAS DEM - DEM) {diff}")
+
+    report_diff_stats(diff)
+#     univar = gs.parse_command("r.univar", map=diff, flags="ge")
+#     mean = float(univar["mean"])
+#     median = float(univar["median"])
+#     stddev = float(univar["stddev"])
+   
+#     print(f"Difference: Mean:{mean}, STD: {stddev}, Median: {median}")
+    gs.run_command("r.colors", map=[output, dem, uas], color="elevation")
+
+def fusion(dem, uas, output,ps=5,ta=2,dr=3, offset_value=0, usgs=True, thin=0, smooth=0):
+    import grass.script as gs
+    import grass.script.array as garray
+    # from sklearn.mixture import BayesianGaussianMixture as GMM
+    import numpy as np
+    from grass.pygrass.modules import Module
+    # TMP_RAST = []
+    # TMP_VECT = []
+    stddev_thr = 5
+    mean_thr = 2
+    _uas = uas
+    buffer = 0.5
+    gs.run_command("g.region", raster=uas)
+    uas_reg = gs.region(uas)
+    avg_wh = ((uas_reg["n"] - uas_reg["s"]) + (uas_reg["e"] - uas_reg["w"])) / 2.0
+    n = uas_reg["n"] + avg_wh * buffer
+    s = uas_reg["s"] - avg_wh * buffer
+    e = uas_reg["e"] + avg_wh * buffer
+    w = uas_reg["w"] - avg_wh * buffer
+    gs.run_command("g.region", n=n, e=e, s=s, w=w)
+    # import_dsm(dem, output_dir='/tmp', input_srs='EPSG:2264', resolution=3, nprocs=4)
+    if usgs:
+        # import_dsm(dem, output_dir='/tmp', input_srs='EPSG:2264', resolution=3, nprocs=8)
+        import_dem(dem,"/tmp", 5)
+    gs.use_temp_region()
+    uas = geographic_correct_dem(uas, "geo_correct_uas")
+
+    uas, dem = resample(uas, dem, True)
+    diff, univar_shift = get_diff(uas, dem, 2,output)
+    uas_vert_c, diff = vertically_corrected_uas(uas, dem, univar_shift, output)
+    # Reshift to improve vert overap accuracy
+    ground = ground_dem(uas, uas_vert_c,dem)
+    diff, univar_shift = get_diff(ground, dem, 2,output)
+    if (abs(offset_value) > 0):
+        print(f"Setting Offset Manaully: {offset_value}")
+        univar_shift = offset_value
+    uas, diff = vertically_corrected_uas(uas, dem, univar_shift, output)
+    patch(uas, dem, output,ps,ta,dr)
+    gs.del_temp_region()
