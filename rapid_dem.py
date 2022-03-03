@@ -55,8 +55,7 @@ def binary_change(before, after, binary_change="binary_change", binary_change_ma
     =======
     binary_change, binary_change_mask
     """
-    change_expression = f"{binary_change} = {before} - {after}"
-    gs.run_command("r.mapcalc", expression=change_expression, overwrite=True)
+    gs.mapcalc(f"{binary_change} = {before} - {after}")
     gs.run_command("r.colors", map=binary_change, color="differences", flags="")
     univar = gs.parse_command("r.univar", map=binary_change, flags="ge")
     mean = float(univar["mean"])
@@ -65,10 +64,7 @@ def binary_change(before, after, binary_change="binary_change", binary_change_ma
     print(f"Std: {stddev}")
     threshold = mean + (stddev * thres) if thres < 0 else mean - (stddev * thres)
     print(f"Change Threshold: {threshold}")
-    
-    mask_expression = f"{binary_change_mask} = if({binary_change} <= {threshold}, 1,null())"
-    gs.run_command("r.mapcalc", expression=mask_expression, overwrite=True)
-    
+    gs.mapcalc(f"{binary_change_mask} = if({binary_change} <= {threshold}, 1,null())")
     
 def calc_bsi(red, green, blue, nir, output):
     """
@@ -625,30 +621,30 @@ def import_uas_data(dtm_input, dtm_output, dsm_input, dsm_output, ortho_input, o
                 overwrite=overwrite
             )
     
-    print(f"Importing Point Cloud (DSM): {laz_output}")
-    gs.run_command("v.in.pdal",
-                 input=laz_input,
-                 output=laz_output,
-                 flags="w",
-                 # input_srs="EPSG:4326",
-                 overwrite=overwrite
-              )
-    # Set  computaional region to imported raster data
-    gs.run_command("g.region", raster=ortho_composite, res=res, flags="ap")
+#     print(f"Importing Point Cloud (DSM): {laz_output}")
+#     gs.run_command("v.in.pdal",
+#                  input=laz_input,
+#                  output=laz_output,
+#                  flags="w",
+#                  # input_srs="EPSG:4326",
+#                  overwrite=overwrite
+#               )
+#     # Set  computaional region to imported raster data
+#     gs.run_command("g.region", raster=ortho_composite, res=res, flags="ap")
     
-    print(f"Generating DSM: {laz_output}")
-    gs.run_command("v.surf.rst",
-                 input=laz_output,
-                 elevation=laz_dsm,
-                 npmin=120,
-                 segmax=25,
-                 tension=100,
-                 smooth=0.5,
-                 dmin=1,
-                 mask=ortho_composite,
-                 nprocs=nprocs,
-                 overwrite=overwrite
-              )
+#     print(f"Generating DSM: {laz_output}")
+#     gs.run_command("v.surf.rst",
+#                  input=laz_output,
+#                  elevation=laz_dsm,
+#                  npmin=120,
+#                  segmax=25,
+#                  tension=100,
+#                  smooth=0.5,
+#                  dmin=1,
+#                  mask=ortho_composite,
+#                  nprocs=nprocs,
+#                  overwrite=overwrite
+#               )
     
     print("Import Complete")
     print("*" * 100)
