@@ -1,0 +1,9 @@
+11 = 10 Water
+21 22 23 24 = 20 Developed
+31 = 30 Barren
+41 42 43 = 40 Forest
+51 52 = 50 Shrubland
+71 = 70 Herbaceous
+81 82 = 80 Planted/Cultivated
+90 95 = 90 Wetlands
+*       = NULL

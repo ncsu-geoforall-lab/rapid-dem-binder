@@ -1,0 +1,3 @@
+0 = 0 No Change
+1 = 1 Change
+*       = NULL

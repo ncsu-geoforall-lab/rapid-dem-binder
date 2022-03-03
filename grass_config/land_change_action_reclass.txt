@@ -1,0 +1,14 @@
+310 = 1 New Road
+410 = 1 New Road
+320 = 2 New Building
+420 = 2 New Building
+520 = 2 New Building
+430 = 3 New Developed Area
+530 = 3 New Developed Area
+470 = 4 New Pond/Flooding
+104 = 5 Dug Up Roadway
+204 = 6 Demolished Building
+304 = 7 Demolished Developed
+630 = 8 Forest Clearing
+640 = 8 Forest Clearing
+* = NULL

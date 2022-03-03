@@ -1,0 +1,4 @@
+1 = 1 Floodway
+2 = 2 1% annual chance of flood
+3 = 3 0.2% annual chance of flood
+*       = NULL

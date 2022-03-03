@@ -1,0 +1,8 @@
+0 = 0 road
+1 = 1 building
+2 = 2 barren
+3 = 3 forest
+4 = 4 grass
+5 = 5 water
+6 = 6 developed
+*       = NULL
