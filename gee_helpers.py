@@ -241,8 +241,9 @@ def exportToDrive(image, imageLabel, resolution=30):
     
 
 
-def detectOutlires(image, band, scale=3, region=aoi):
+def detectOutlires(image, band, region, scale=3):
     """
+    param region : The aoi
     #https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/9ZIUGQ
     """
     # // Tukey's lower and upper fence
@@ -396,7 +397,7 @@ def detectOutlires(image, band, scale=3, region=aoi):
       geometry= region,
       scale= scale,
       maxPixels= 1e12).get('area')).divide(totalArea).multiply(100).getInfo() #.toFixed(2)
-      print("lfArea")
+    print("lfArea")
 
     ufArea = ee.Number(areaImage.add(tukeys.eq(2)).reduceRegion(
       reducer= ee.Reducer.sum(),

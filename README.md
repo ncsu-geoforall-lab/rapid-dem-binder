@@ -6,20 +6,22 @@ Binder containing submitted results to the "Rapid-DEM: Rapid Topographic Updates
 
 1. **gee_change_detection**: Google Earth Engine change detection workflow. (Needs Clean Up)
 2. **gee_import_planet**: Creates PlanetScope order using Planet API and creates Google Earth Engine ImageCollection. (Needs Clean Up)
-3. **priority_queue**: Workflow to develop the priority queue from land cover data. (Ready)
-4. **analysis**: UAS processing, DEM fusion, and surface water modeling. (Ready)
+3. **odm**: ODM SFM Configuration (TODO)
+4. **priority_queue**: Workflow to develop the priority queue from land cover data. (Ready)
+5. **analysis**: UAS processing, DEM fusion, and surface water modeling. (Ready)
 
 ## Scripts
 
 **rapid-dem.py**: Helper scripts used in Notebooks.
+**gee_helpers.py**: Google Earth Engine helper scripts used in Notebooks.
 
 ## Project Data
 
-https://osf.io/yg6h8/
+[https://osf.io/yg6h8/](https://osf.io/yg6h8/)
 
 ## Citation
 
-TBD (Submitted to MDPI *Remote Sensing* on 3/1/22)
+TBD (Submitted to MDPI *Remote Sensing* on 3/1/22)j
 
 ## License
 

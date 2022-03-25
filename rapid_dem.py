@@ -5,6 +5,7 @@ rapid_dem
 # ============ Packages ================
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import grass.script as gs
 import grass.jupyter as gj
 # ============ Functions ===============
@@ -686,9 +687,75 @@ def profile_dem(dem, output, coords):
     out = f"output/{output}.csv"
     gs.run_command("r.profile", flags="gc", input=dem, coordinates=coords, output=out, null_value="0", overwrite=True)
     gs.run_command("v.in.ascii", input=out, output=output, separator="space", columns="x double,y double,profile double,diff double, color varchar", overwrite=True)
-    # !v.univar map=profile_fenton_shift column=diff
     df = pd.read_csv(out, delimiter=" ", names=['x', 'y', 'profile', 'diff', 'color'])
     return df
+
+
+def generate_profile_figure(df_ned, df_uas, df_fused, output):
+    """
+    Displays maplotlib line chart comapring profiles of three elevation profiles and returns 
+    file path to the saved figure.
+
+    Parameters
+    ==========
+    dem (Datafram): Pandas Dataframe of DEM elevation profile generated with <rapid_dem.profile> function.
+    uas (Datafram): Pandas Dataframe of UAS DEM elevation profile generated with <rapid_dem.profile> function.
+    fused (Datafram): Pandas Dataframe of Fused DEM elevation profile generated with <rapid_dem.profile> function.
+    output (str):
+
+    Returns
+    =======
+    plt
+    """
+    
+   
+    df_ned['DEMs'] = "A) USGS NED DEM"
+    df_fused['DEMs'] = "B) Fused DEM"
+    df_uas['DEMs'] = "C) UAS DEM (Registered)"
+    df_uas = df_uas[df_uas['diff'] > 0]
+
+    df_profiles = pd.concat([df_ned, df_fused, df_uas], ignore_index=True)
+
+    sns.set_theme(style="darkgrid")
+    fig = plt.figure(figsize=(15, 10))
+
+    ax = sns.lineplot(x="profile", y="diff", data=df_fused, style="DEMs", color='#0571b0', linewidth=8); #blue
+    sns.lineplot(x="profile", y="diff", data=df_ned,color='#ca0020', linewidth=3, style=True, dashes=[(2,2)], ax=ax); # red
+    sns.lineplot(x="profile", y="diff", data=df_uas, color='#ffffbf', linewidth=4, style=True, dashes=[(2,2)], ax=ax); # white
+    ax.set_xlabel('Distance (m)', fontsize=35)
+    ax.set_ylabel('Elevation (m)', fontsize=35)
+    ax.tick_params(labelsize=20)
+    ax.legend(loc='upper right', fontsize=40)
+    plt.setp(ax.get_legend().get_texts(), fontsize='50') # for legend text
+    plt.legend(fontsize='x-large', title_fontsize='50')
+
+    fusion_start = [df_uas['profile'].loc[0:0]]
+    fusion_start = df_uas.head(1)[['profile']].values[0]
+    fusion_end = df_uas.tail(1)[['profile']].values[0]
+    plt.axvline(fusion_start, color='grey', linestyle='dashed',label="", linewidth=1.5) #min
+    plt.axvline(fusion_end, color='grey', linestyle='dashed',label="Fusion Boundary", linewidth=1.5) #min
+
+    # plt.text(374.5,132.25,'Pond',backgroundcolor="white", va="top", ha="left", fontsize=18)
+    # plt.hlines(132.65, 371, 403, color="black")
+
+    import matplotlib.patches as mpatches
+    import matplotlib.lines as mlines
+
+    ned_line = mlines.Line2D([], [], color='#ca0020', marker='', linestyle="dashed", markersize=15, linewidth=4, label='USGS NED DEM')
+    uas_line = mlines.Line2D([], [], color='#ffffbf', marker='', linestyle="dashed", markersize=15,  linewidth=4, label='UAS DEM (Registered)')
+    fused_line = mlines.Line2D([], [], color='#0571b0', marker='', markersize=15, linewidth=8, label='Fused DEM')
+    boundary_line = mlines.Line2D([], [], color='grey', marker='', linestyle="dashed", linewidth=1.5, label='Fusion Boundary')
+
+
+    ax.legend(loc='lower center', fontsize=25, handles=[ned_line, uas_line, fused_line, boundary_line])
+
+
+    # plt.tight_layout()
+    # save_location = f"output/{output}.png"
+    # print(f"Save Location: {save_location}")
+    # plt.savefig(save_location, bbox_inches='tight', dpi=300)
+    # sns.set_theme(style="white", palette=None)
+    return plt
 
 
 """
