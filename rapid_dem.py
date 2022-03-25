@@ -4,10 +4,13 @@ rapid_dem
 
 # ============ Packages ================
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import pandas as pd
 import seaborn as sns
+import numpy as np
 import grass.script as gs
 import grass.jupyter as gj
+
 # ============ Functions ===============
 
 
@@ -29,38 +32,60 @@ def u16bitTou8bit(band, output):
     min_val = float(univar["min"])
     max_val = float(univar["max"])
     gs.mapcalc(
-        f'{output} = (({band} - {min_val}) * 255) / ({max_val} - {min_val}) + 0'
-        )
+        f"""{output} = (
+            ({band} - {min_val}) * 255) /
+            ({max_val} - {min_val}) + 0
+        """
+    )
     gs.run_command("r.colors", map=output, color="grey255", flags="e")
     return output
 
 
-def binary_change(before, after, binary_change="binary_change", binary_change_mask="binary_change_mask", thres=-2.5):
+def binary_change(
+    before,
+    after,
+    binary_change="binary_change",
+    binary_change_mask="binary_change_mask",
+    thres=-2.5,
+):
     """
-    Calculates a binary change mask between two images with a thershold set at -2.5 times the std dev.
+    Calculates a binary change mask between two images with a
+    thershold set at -2.5 times the std dev.
 
     Parameters
     ==========
     before (str): A string name of the before image raster.
     after (str): A string name of the after image raster.
-    binary_change (str): (optional) A string name of the output binary change raster.
-    binary_change_mask (str): (optional) A string name of the output binary change mask.
-    thres (float): (optional) Value used to scale the change threshold by multiplying the standard deviation.
+    binary_change (str): (optional) A string name of the output
+                         binary change raster.
+    binary_change_mask (str): (optional) A string name of
+                              the output binary change mask.
+    thres (float): (optional) Value used to scale the change
+                   threshold by multiplying the standard deviation.
 
     Returns
     =======
     binary_change, binary_change_mask
     """
     gs.mapcalc(f"{binary_change} = {before} - {after}")
-    gs.run_command("r.colors", map=binary_change, color="differences", flags="")
+    gs.run_command(
+        "r.colors",
+        map=binary_change,
+        color="differences",
+        flags=""
+    )
     univar = gs.parse_command("r.univar", map=binary_change, flags="ge")
     mean = float(univar["mean"])
     print(f"Mean: {mean}")
     stddev = float(univar["stddev"])
     print(f"Std: {stddev}")
-    threshold = mean + (stddev * thres) if thres < 0 else mean - (stddev * thres)
+    threshold = (
+        mean + (stddev * thres) if thres < 0 else mean - (stddev * thres)
+    )
     print(f"Change Threshold: {threshold}")
-    gs.mapcalc(f"{binary_change_mask} = if({binary_change} <= {threshold}, 1,null())")
+    gs.mapcalc(
+        f"{binary_change_mask} = if({binary_change} <= {threshold}, 1, null())"
+    )
 
 
 def calc_bsi(red, green, blue, nir, output):
@@ -79,7 +104,13 @@ def calc_bsi(red, green, blue, nir, output):
     =======
     output
     """
-    gs.mapcalc(f"{output} = (({red} + {green}) - ({red} + {blue}))/ (({nir} + {green}) + ({red} + {blue})) * 100 + 100")
+    gs.mapcalc(
+        f"""{output} =
+            (({red} + {green}) - ({red} + {blue})) /
+            (({nir} + {green}) + ({red} + {blue})) * 100 + 100
+        """
+    )
+
     return output
 
 
@@ -109,7 +140,8 @@ def zscore(rast, output, log=False):
     ==========
     rast (str): Name of the input raster.
     output (str): Name of the output raster.
-    log (bool): (optional) Set true if the data is skewed and requires log normalization.
+    log (bool): (optional) Set true if the data is skewed
+                and requires log normalization.
 
     Returns
     =======
@@ -143,13 +175,31 @@ def shadedRelief(elevation, relief, output, shade_only=False):
     @param elevation : string : Name of existing elevation raster
     @param relief : string : Name of newly created relief raster
     @param output : string: Name of shaded relief raster
-    @param shade_only : Bool : Applied shading to exisiting releif map where elevation works as a color
+    @param shade_only : Bool : Applied shading to exisiting releif map
+                              where elevation works as a color
     """
     if shade_only:
-        gs.run_command("r.shade", shade=relief, color=elevation, output=output, overwrite=True)
+        gs.run_command(
+            "r.shade",
+            shade=relief,
+            color=elevation,
+            output=output,
+            overwrite=True
+        )
     else:
-        gs.run_command("r.relief", input=elevation, output=relief, overwrite=True)
-        gs.run_command("r.shade", shade=relief, color=elevation, output=output, overwrite=True)
+        gs.run_command(
+            "r.relief",
+            input=elevation,
+            output=relief,
+            overwrite=True
+        )
+        gs.run_command(
+            "r.shade",
+            shade=relief,
+            color=elevation,
+            output=output,
+            overwrite=True
+        )
 
 
 def generate_elevation_figure(elev, filename):
@@ -166,9 +216,22 @@ def generate_elevation_figure(elev, filename):
     elev_map = gj.GrassRenderer(height=900, width=1400, filename=output)
     elev_map.d_erase()
     elev_map.d_rast(map=shaded_relief)
-    elev_map.d_legend(raster=elev, at=(14, 50, 10, 12), title="Elevation (m)", font="FreeSans", title_fontsize=18, fontsize=16, flags="tb", border_color='none')
-    elev_map.d_barscale(at=(8, 10), units="meters", flags="n", font="FreeSans", fontsize=24)
-    elev_map.d_grid(size="00:58:40", flags="dw", width=1, color="black", text_color="black")
+    elev_map.d_legend(
+        raster=elev,
+        at=(14, 50, 10, 12),
+        title="Elevation (m)",
+        font="FreeSans",
+        title_fontsize=18,
+        fontsize=16,
+        flags="tb",
+        border_color="none",
+    )
+    elev_map.d_barscale(
+        at=(8, 10), units="meters", flags="n", font="FreeSans", fontsize=24
+    )
+    elev_map.d_grid(
+        size="00:58:40", flags="dw", width=1, color="black", text_color="black"
+    )
 
     return elev_map.show()
 
@@ -187,9 +250,27 @@ def generate_uas_elevation_figures(elev, filename):
     elev_map = gj.GrassRenderer(height=900, width=900, filename=output)
     elev_map.d_erase()
     elev_map.d_rast(map=shaded_relief)
-    elev_map.d_legend(raster=elev, at=(70, 90, 67, 70), title="Elevation (m)", font="FreeSans", title_fontsize=18, fontsize=16, flags="tb", border_color='none')
-    elev_map.d_barscale(at=(16, 7), units="meters", flags="n", font="FreeSans", fontsize=24)
-    elev_map.d_grid(size="00:0:56", flags="dw", width=1, color="black", text_color="black", fontsize=12)
+    elev_map.d_legend(
+        raster=elev,
+        at=(70, 90, 67, 70),
+        title="Elevation (m)",
+        font="FreeSans",
+        title_fontsize=18,
+        fontsize=16,
+        flags="tb",
+        border_color="none",
+    )
+    elev_map.d_barscale(
+        at=(16, 7), units="meters", flags="n", font="FreeSans", fontsize=24
+    )
+    elev_map.d_grid(
+        size="00:0:56",
+        flags="dw",
+        width=1,
+        color="black",
+        text_color="black",
+        fontsize=12,
+    )
 
     return elev_map.show()
 
@@ -208,12 +289,25 @@ def generate_fusion_elevation_figure(elev, filename):
     elev_map = gj.GrassRenderer(height=900, width=1400, filename=output)
     elev_map.d_erase()
     elev_map.d_rast(map=shaded_relief)
-    elev_map.d_legend(raster=elev, at=(5, 30, 3, 5),
-                      title="Elevation (m)", font="FreeSans", border_color="none",
-                      title_fontsize=16, fontsize=14,
-                      flags="bt")
+    elev_map.d_legend(
+        raster=elev,
+        at=(5, 30, 3, 5),
+        title="Elevation (m)",
+        font="FreeSans",
+        border_color="none",
+        title_fontsize=16,
+        fontsize=14,
+        flags="bt",
+    )
     elev_map.d_barscale(at=(18, 7), units="meters", flags="n", font="FreeSans")
-    elev_map.d_grid(size="00:00:58", flags="dw", width=1, color="black", text_color="black", fontsize=16)
+    elev_map.d_grid(
+        size="00:00:58",
+        flags="dw",
+        width=1,
+        color="black",
+        text_color="black",
+        fontsize=16,
+    )
 
     return elev_map.show()
 
@@ -221,11 +315,24 @@ def generate_fusion_elevation_figure(elev, filename):
 def generate_ortho_figure(ortho, filename):
     output = f"output/{filename}.png"
     print(f"Image Save Location: {output}")
-    ortho_composite_map = gj.GrassRenderer(height=900, width=900, filename=output)
+    ortho_composite_map = gj.GrassRenderer(
+        height=900,
+        width=900,
+        filename=output
+    )
     ortho_composite_map.d_erase()
     ortho_composite_map.d_rast(map=ortho)
-    ortho_composite_map.d_barscale(at=(16, 7), units="meters", flags="n", font="FreeSans", fontsize=24)
-    ortho_composite_map.d_grid(size="00:0:56", flags="dw", width=1, color="black", text_color="black", fontsize=12)
+    ortho_composite_map.d_barscale(
+        at=(16, 7), units="meters", flags="n", font="FreeSans", fontsize=24
+    )
+    ortho_composite_map.d_grid(
+        size="00:0:56",
+        flags="dw",
+        width=1,
+        color="black",
+        text_color="black",
+        fontsize=12,
+    )
     return ortho_composite_map.show()
 
 
@@ -234,10 +341,18 @@ def generate_uas_footprint(elev, output, overwrite=False):
     Creates a footprint of the UAS flight area
     """
     gs.mapcalc(f"{output} = if(isnull({elev}), null(), 1)")
-    gs.run_command("r.to.vect", input=output, output=output, type="area", overwrite=overwrite)
+    gs.run_command(
+        "r.to.vect",
+        input=output,
+        output=output,
+        type="area",
+        overwrite=overwrite
+    )
 
 
-def create_flight_figure(input_1, title_1, input_2, title_2, input_3, title_3, filename):
+def create_flight_figure(
+    input_1, title_1, input_2, title_2, input_3, title_3, filename
+):
     from PIL import Image
 
     fig = plt.figure(figsize=(25, 30))
@@ -246,28 +361,27 @@ def create_flight_figure(input_1, title_1, input_2, title_2, input_3, title_3, f
     fig.subplots_adjust(hspace=0, wspace=0.1)
     ax.set_axis_off()
     img1 = Image.open(f"output/{input_1}.png")
-    imgplot = plt.imshow(img1)
+    plt.imshow(img1)
     ax.set_title(title_1, {"fontsize": 24, "fontweight": "bold"})
 
     ax = fig.add_subplot(1, 3, 2)
     ax.set_axis_off()
     img2 = Image.open(f"output/{input_2}.png")
-    imgplot = plt.imshow(img2)
+    plt.imshow(img2)
     ax.set_title(title_2, {"fontsize": 24, "fontweight": "bold"})
 
     ax = fig.add_subplot(1, 3, 3)
     ax.set_axis_off()
 
     img3 = Image.open(f"output/{input_3}.png")
-    imgplot = plt.imshow(img3)
-    # imgplot.set_clim(0.0, 0.7)
+    plt.imshow(img3)
     ax.set_title(title_3, {"fontsize": 24, "fontweight": "bold"})
 
     output = f"output/{filename}.png"
     print(f"Image Save Location: {output}")
 
     plt.tight_layout()
-    return plt.savefig(output, bbox_inches='tight', dpi=300)
+    return plt.savefig(output, bbox_inches="tight", dpi=300)
 
 
 """
@@ -306,84 +420,364 @@ def land_change_action(output):
 
     land_use_change = {
         # Base Classes
-        "road to road": {"class": 10, "label": "Roadway", "color": "217:146:130", "action": "", "priority": 0},
-        "building to building": {"class": 20, "label": "Building", "color": "171:0:0", "action": "", "priority": 0},  # 7 # Building
-        "developed to developed": {"class": 30, "label": "Developed", "color": "222:197:197", "action": "", "priority": 0},  # Developed
-        "barren to barren": {"class": 40, "label": "Barren", "color": "179:172:159", "action": "", "priority": 0},  # Barren
-        "grass to grass": {"class": 50, "label": "Grass", "color": "133:199:126", "action": "", "priority": 0},  # Grass
-        "forest to forest": {"class": 60, "label": "Forest", "color": "104:171:95", "action": "", "priority": 0},  # Forest
-        "water to water": {"class": 70, "label": "Water", "color": "70:107:159", "action": "", "priority": 0},
+        "road to road": {
+            "class": 10,
+            "label": "Roadway",
+            "color": "217:146:130",
+            "action": "",
+            "priority": 0,
+        },
+        "building to building": {
+            "class": 20,
+            "label": "Building",
+            "color": "171:0:0",
+            "action": "",
+            "priority": 0,
+        },  # 7 # Building
+        "developed to developed": {
+            "class": 30,
+            "label": "Developed",
+            "color": "222:197:197",
+            "action": "",
+            "priority": 0,
+        },  # Developed
+        "barren to barren": {
+            "class": 40,
+            "label": "Barren",
+            "color": "179:172:159",
+            "action": "",
+            "priority": 0,
+        },  # Barren
+        "grass to grass": {
+            "class": 50,
+            "label": "Grass",
+            "color": "133:199:126",
+            "action": "",
+            "priority": 0,
+        },  # Grass
+        "forest to forest": {
+            "class": 60,
+            "label": "Forest",
+            "color": "104:171:95",
+            "action": "",
+            "priority": 0,
+        },  # Forest
+        "water to water": {
+            "class": 70,
+            "label": "Water",
+            "color": "70:107:159",
+            "action": "",
+            "priority": 0,
+        },
         # Added Features
-
         # New Road (Purple)
-        "developed to road": {"class": 310, "label": "New Road", "color": "45:0:75", "action": 1, "priority": 3},  # New Road
-        "barren to road": {"class": 410, "label": "New Road", "color": "45:0:75", "action": 1, "priority": 3},  # New Roadway
-
+        "developed to road": {
+            "class": 310,
+            "label": "New Road",
+            "color": "45:0:75",
+            "action": 1,
+            "priority": 3,
+        },  # New Road
+        "barren to road": {
+            "class": 410,
+            "label": "New Road",
+            "color": "45:0:75",
+            "action": 1,
+            "priority": 3,
+        },  # New Roadway
         # New Building (Teal)
-        "developed to building": {"class": 320, "label": "New Building", "color": "1:102:94", "action": 2, "priority": 7},  # New Building
-        "barren to building": {"class": 420, "label": "New Building", "color": "1:102:94", "action": 2, "priority": 7},  # New Building
-        "grass to building": {"class": 520, "label": "New Building", "color": "1:102:94", "action": 2, "priority": 7},  # New Building
-
+        "developed to building": {
+            "class": 320,
+            "label": "New Building",
+            "color": "1:102:94",
+            "action": 2,
+            "priority": 7,
+        },  # New Building
+        "barren to building": {
+            "class": 420,
+            "label": "New Building",
+            "color": "1:102:94",
+            "action": 2,
+            "priority": 7,
+        },  # New Building
+        "grass to building": {
+            "class": 520,
+            "label": "New Building",
+            "color": "1:102:94",
+            "action": 2,
+            "priority": 7,
+        },  # New Building
         # New Developed Area (Light Purple
-        "barren to developed": {"class": 430, "label": "New Developed Area", "color": "128:115:172", "action": 3, "priority": 5},  # New Developed Area
-        "grass to developed": {"class": 530, "label": "New Developed Area", "color": "128:115:172", "action": 3, "priority": 5},  # New Developed Area (Grass to Developed)
-
+        "barren to developed": {
+            "class": 430,
+            "label": "New Developed Area",
+            "color": "128:115:172",
+            "action": 3,
+            "priority": 5,
+        },  # New Developed Area
+        "grass to developed": {
+            "class": 530,
+            "label": "New Developed Area",
+            "color": "128:115:172",
+            "action": 3,
+            "priority": 5,
+        },  # New Developed Area (Grass to Developed)
         # New Pond (Light Blue)
-        "barren to water": {"class": 470, "label": "New Pond/Flooding", "color": "166:206:227", "action": 4, "priority": 0},  # New Pond/Flooding
-
+        "barren to water": {
+            "class": 470,
+            "label": "New Pond/Flooding",
+            "color": "166:206:227",
+            "action": 4,
+            "priority": 0,
+        },  # New Pond/Flooding
         # Removed Features ()
-        "road to barren": {"class": 104, "label": "Dug Up Roadway", "color": "179:88:6", "action": 5, "priority": 4},  # Dark Orange Brown
-        "building to barren": {"class": 204, "label": "Demolished Building", "color": "224:130:20", "action": 6, "priority": 7},  # Orange Brown
-        "developed to barren": {"class": 304, "label": "Demolished Developed", "color": "253:184:99", "action": 7, "priority": 7},  # Light Orange Brown
-        "forest to developed": {"class": 630, "label": "Forest Clearing", "color": "197:27:125", "action": 8, "priority": 7},  # Dark Pink
-        "forest to barren": {"class": 640, "label": "Forest Clearing", "color": "197:27:125", "action": 8, "priority": 7},  # (Seasonal forest to Road)
-
+        "road to barren": {
+            "class": 104,
+            "label": "Dug Up Roadway",
+            "color": "179:88:6",
+            "action": 5,
+            "priority": 4,
+        },  # Dark Orange Brown
+        "building to barren": {
+            "class": 204,
+            "label": "Demolished Building",
+            "color": "224:130:20",
+            "action": 6,
+            "priority": 7,
+        },  # Orange Brown
+        "developed to barren": {
+            "class": 304,
+            "label": "Demolished Developed",
+            "color": "253:184:99",
+            "action": 7,
+            "priority": 7,
+        },  # Light Orange Brown
+        "forest to developed": {
+            "class": 630,
+            "label": "Forest Clearing",
+            "color": "197:27:125",
+            "action": 8,
+            "priority": 7,
+        },  # Dark Pink
+        "forest to barren": {
+            "class": 640,
+            "label": "Forest Clearing",
+            "color": "197:27:125",
+            "action": 8,
+            "priority": 7,
+        },  # (Seasonal forest to Road)
         # Flooded Features
-        "road to water": {"class": 107, "label": "Flooded Roadway", "color": "", "action": "", "priority": 0},
-        "building to water": {"class": 207, "label": "Flooded Building", "color": "", "action": "", "priority": 0},  # 10
-        "developed to water": {"class": 307, "label": "Flooded Developed", "color": "", "action": "", "priority": 0},   # Flooding
-        "grass to water": {"class": 507, "label": "Flooded Field", "color": "", "action": "", "priority": 0},  # Flooded Field
-
+        "road to water": {
+            "class": 107,
+            "label": "Flooded Roadway",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "building to water": {
+            "class": 207,
+            "label": "Flooded Building",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },  # 10
+        "developed to water": {
+            "class": 307,
+            "label": "Flooded Developed",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },  # Flooding
+        "grass to water": {
+            "class": 507,
+            "label": "Flooded Field",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },  # Flooded Field
         # Noise
-        "road to building": {"class": 1002, "label": "Noise (Roadway to Building)", "color": "", "action": "", "priority": 1},  # High Priority queue (7)...same not sure why this is a 7
-        "road to grass": {"class": 1005, "label": "Noise (Road to Grass)", "color": "", "action": "", "priority": 1},
-        "road to forest": {"class": 1006, "label": "Noise (Road to Forest)", "color": "", "action": "", "priority": 1},
-        "road to developed": {"class": 1003, "label": "Noise (Road to Developed)", "color": "", "action": "", "priority": 4},
-
-        "building to road": {"class": 20001, "label": "Noise (Building to Road)", "color": "", "action": "", "priority": 1},
-        "building to forest": {"class": 2002, "label": "Noise (Building to Forest)", "color": "", "action": "", "priority": 3},
-        "building to developed": {"class": 2003, "label": "Noise (Building to Developed)", "color": "", "action": "", "priority": 5},
-        "building to grass": {"class": 2005, "label": "Noise (Building to Grass)", "color": "", "action": "", "priority": 3},
-
-        "developed to grass": {"class": 3005, "label": "Noise ( Developed to Grass)", "color": "", "action": "", "priority": 3},  # Reclaimed Grass
-        "developed to forest": {"class": 3006, "label": "Noise (Developed to Forest)", "color": "", "action": "", "priority": 3},  # Reclaimed Forest
-
-        "barren to grass": {"class": 4005, "label": "Noise (Barren to Grass)", "color": "", "action": "", "priority": 2},
-        "barren to forest": {"class": 4006, "label": "Noise (Barren to Forest)", "color": "", "action": "", "priority": 2},
-
-        "grass to road": {"class": 5001, "label": " Noise (Grass to Road)", "color": "", "action": "", "priority": 3},
-        "grass to barren": {"class": 5004, "label": " Noise (Field/Barren)", "color": "", "action": "", "priority": 3},
-        "grass to forest": {"class": 5006, "label": "Noise (Grass to Forest)", "color": "", "action": "", "priority": 3},
-
-        "forest to road": {"class": 6001, "label": "Nosie (Seasonal forest to Road)", "color": "", "action": "", "priority": 3},
-        "forest to building": {"class": 6002, "label": "Nosie (Seasonal forest to Road)", "color": "", "action": "", "priority": 1},
-
-        "forest to grass": {"class": 6005, "label": "Noise (Forest to Grass)", "color": "", "action": "", "priority": 3},
-        "forest to water": {"class": 6007, "label": "Noise (Forest to Water)", "color": "", "action": "", "priority": 0},
-
-        "water to road": {"class": 7001, "label": "Noise (Water to Road)", "color": "", "action": "", "priority": 0},
-        "water to building": {"class": 7002, "label": "Noise (Water to Building)", "color": "", "action": "", "priority": 0},
-        "water to developed": {"class": 7003, "label": "Noise (Water to Developed)", "color": "", "action": "", "priority": 0},
-        "water to barren": {"class": 7004, "label": "Noise (Water to Barren)", "color": "", "action": "", "priority": 0},
-        "water to grass": {"class": 7005, "label": "Noise (Water to Grass)", "color": "", "action": "", "priority": 0},
-        "water to forest": {"class": 7006, "label": "Noise (Water to Forest)", "color": "", "action": "", "priority": 0}
+        "road to building": {
+            "class": 1002,
+            "label": "Noise (Roadway to Building)",
+            "color": "",
+            "action": "",
+            "priority": 1,
+        },  # High Priority queue (7)...same not sure why this is a 7
+        "road to grass": {
+            "class": 1005,
+            "label": "Noise (Road to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 1,
+        },
+        "road to forest": {
+            "class": 1006,
+            "label": "Noise (Road to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 1,
+        },
+        "road to developed": {
+            "class": 1003,
+            "label": "Noise (Road to Developed)",
+            "color": "",
+            "action": "",
+            "priority": 4,
+        },
+        "building to road": {
+            "class": 20001,
+            "label": "Noise (Building to Road)",
+            "color": "",
+            "action": "",
+            "priority": 1,
+        },
+        "building to forest": {
+            "class": 2002,
+            "label": "Noise (Building to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "building to developed": {
+            "class": 2003,
+            "label": "Noise (Building to Developed)",
+            "color": "",
+            "action": "",
+            "priority": 5,
+        },
+        "building to grass": {
+            "class": 2005,
+            "label": "Noise (Building to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "developed to grass": {
+            "class": 3005,
+            "label": "Noise ( Developed to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },  # Reclaimed Grass
+        "developed to forest": {
+            "class": 3006,
+            "label": "Noise (Developed to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },  # Reclaimed Forest
+        "barren to grass": {
+            "class": 4005,
+            "label": "Noise (Barren to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 2,
+        },
+        "barren to forest": {
+            "class": 4006,
+            "label": "Noise (Barren to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 2,
+        },
+        "grass to road": {
+            "class": 5001,
+            "label": " Noise (Grass to Road)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "grass to barren": {
+            "class": 5004,
+            "label": " Noise (Field/Barren)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "grass to forest": {
+            "class": 5006,
+            "label": "Noise (Grass to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "forest to road": {
+            "class": 6001,
+            "label": "Nosie (Seasonal forest to Road)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "forest to building": {
+            "class": 6002,
+            "label": "Nosie (Seasonal forest to Road)",
+            "color": "",
+            "action": "",
+            "priority": 1,
+        },
+        "forest to grass": {
+            "class": 6005,
+            "label": "Noise (Forest to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 3,
+        },
+        "forest to water": {
+            "class": 6007,
+            "label": "Noise (Forest to Water)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to road": {
+            "class": 7001,
+            "label": "Noise (Water to Road)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to building": {
+            "class": 7002,
+            "label": "Noise (Water to Building)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to developed": {
+            "class": 7003,
+            "label": "Noise (Water to Developed)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to barren": {
+            "class": 7004,
+            "label": "Noise (Water to Barren)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to grass": {
+            "class": 7005,
+            "label": "Noise (Water to Grass)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
+        "water to forest": {
+            "class": 7006,
+            "label": "Noise (Water to Forest)",
+            "color": "",
+            "action": "",
+            "priority": 0,
+        },
     }
 
     # Create Color Table
     with open("grass_config/land_change_action_colors.txt", "w") as f:
         for k, feature in land_use_change.items():
-            klass = feature['class']
-            kolor = feature['color']
+            klass = feature["class"]
+            kolor = feature["color"]
             if kolor != "":
                 print(f"{klass} {kolor}", file=f)
 
@@ -393,8 +787,8 @@ def land_change_action(output):
     # Create Reclass Tabel
     with open("grass_config/land_change_reclass.txt", "w") as f:
         for k, feature in land_use_change.items():
-            klass = feature['class']
-            label = feature['label']
+            klass = feature["class"]
+            label = feature["label"]
             if klass and label != "":
                 print(f"{klass} = {klass} {label}", file=f)
 
@@ -403,9 +797,9 @@ def land_change_action(output):
     # Create Reclass Tabel
     with open("grass_config/land_change_action_reclass.txt", "w") as f:
         for k, feature in land_use_change.items():
-            klass = feature['class']
-            aklass = feature['action']
-            label = feature['label']
+            klass = feature["class"]
+            aklass = feature["action"]
+            label = feature["label"]
             if klass and aklass and label != "":
                 print(f"{klass} = {aklass} {label}", file=f)
 
@@ -413,8 +807,8 @@ def land_change_action(output):
 
     with open("grass_config/land_change_basic_action_colors.txt", "w") as f:
         for k, feature in land_use_change.items():
-            klass = feature['action']
-            kolor = feature['color']
+            klass = feature["action"]
+            kolor = feature["color"]
             if kolor and klass != "":
                 print(f"{klass} {kolor}", file=f)
 
@@ -423,36 +817,72 @@ def land_change_action(output):
 
     with open("grass_config/land_change_zonal_action_reclass.txt", "w") as f:
         for k, feature in land_use_change.items():
-            klass = feature['class']
-            aklass = feature['action']
-            label = feature['label']
+            klass = feature["class"]
+            aklass = feature["action"]
+            label = feature["label"]
             if klass and aklass and label != "":
                 print(f"{aklass} = {aklass} {label}", file=f)
 
         print("* = NULL", file=f)
 
     def expression_builder(from_val, to_val, priority):
-        return f"if(classified_before_30m_recl == {from_val} && classified_after_30m_recl == {to_val}, {priority},"
+        return f"""if(
+            classified_before_30m_recl == {from_val}
+            && classified_after_30m_recl == {to_val},
+            {priority},
+            """
 
     class_list = range(0, 7)
-    classnames = ["road", "building", "barren", "forest", "grass", "water", "developed"]
+    classnames = [
+        "road",
+        "building",
+        "barren",
+        "forest",
+        "grass",
+        "water",
+        "developed"
+    ]
     expression = ""
     closing = ""
     for from_class in class_list:
         for to_class in class_list:
             change_key = f"{classnames[from_class]} to {classnames[to_class]}"
             change_dict = land_use_change[change_key]
-            change_value = change_dict['class']
-            expression += expression_builder(from_class, to_class, change_value)
+            change_value = change_dict["class"]
+            expression += expression_builder(
+                from_class,
+                to_class,
+                change_value
+            )
             closing += ")"
     expression += "0"
     expression += closing
 
     gs.mapcalc(f"{output} = {expression}")
-    gs.run_command("r.reclass", input=output, rules="grass_config/land_change_reclass.txt", title="Land Change Classes", output="land_change_30m")
-    gs.run_command("r.colors", map="land_change_30m", rules="grass_config/land_change_action_colors.txt")
-    gs.run_command("r.reclass", input=output, rules="grass_config/land_change_action_reclass.txt", title="Land Change Actions", output="land_change_basic_actions_30m")
-    gs.run_command("r.colors", map="land_change_basic_actions_30m", rules="grass_config/land_change_basic_action_colors.txt")
+    gs.run_command(
+        "r.reclass",
+        input=output,
+        rules="grass_config/land_change_reclass.txt",
+        title="Land Change Classes",
+        output="land_change_30m",
+    )
+    gs.run_command(
+        "r.colors",
+        map="land_change_30m",
+        rules="grass_config/land_change_action_colors.txt",
+    )
+    gs.run_command(
+        "r.reclass",
+        input=output,
+        rules="grass_config/land_change_action_reclass.txt",
+        title="Land Change Actions",
+        output="land_change_basic_actions_30m",
+    )
+    gs.run_command(
+        "r.colors",
+        map="land_change_basic_actions_30m",
+        rules="grass_config/land_change_basic_action_colors.txt",
+    )
 
 
 def priority_change_calc(before_landcover, after_landcover, output):
@@ -513,22 +943,35 @@ def priority_change_calc(before_landcover, after_landcover, output):
         "developed to barren": 7,
         "developed to water": 0,
         "developed to grass": 3,
-        "developed to forest": 3
+        "developed to forest": 3,
     }
 
     def expression_builder(from_val, to_val, priority):
-        return f"if({before_landcover} == {from_val} && {after_landcover} == {to_val}, {priority},"
+        return f"""if(
+            {before_landcover} == {from_val} &&
+            {after_landcover} == {to_val},
+            {priority},
+            """
 
     class_list = range(0, 7)
-    classnames = ["road", "building", "barren", "forest", "grass", "water", "developed"]
+    classnames = [
+        "road",
+        "building",
+        "barren",
+        "forest",
+        "grass",
+        "water",
+        "developed"
+    ]
+
     expression = ""
     closing = ""
-    for from_class in class_list:
-        for to_class in class_list:
-            if from_class != to_class:
-                change_key = f"{classnames[from_class]} to {classnames[to_class]}"
+    for fc in class_list:
+        for tc in class_list:
+            if fc != tc:
+                change_key = f"{classnames[fc]} to {classnames[tc]}"
                 change_value = change_priority[change_key]
-                expression += expression_builder(from_class, to_class, change_value)
+                expression += expression_builder(fc, tc, change_value)
                 closing += ")"
     expression += "0"
     expression += closing
@@ -542,9 +985,24 @@ Import UAS Data
 """
 
 
-def import_uas_data(dtm_input, dtm_output, dsm_input, dsm_output, ortho_input, ortho_output, ortho_composite, laz_input, laz_output, laz_dsm, res=0.5, memory=300, nprocs=1, overwrite=False):
+def import_uas_data(
+    dtm_input,
+    dtm_output,
+    dsm_input,
+    dsm_output,
+    ortho_input,
+    ortho_output,
+    ortho_composite,
+    laz_input,
+    laz_output,
+    laz_dsm,
+    res=0.5,
+    memory=300,
+    nprocs=1,
+    overwrite=False,
+):
     """
-    Imports DSM, DTM, Ortho, and point cloud data exported from WebDOM into GRASS GIS.
+    Imports DSM, DTM, Ortho, and point cloud data from WebDOM.
     @param dtm_input : string : file location (.tif)
     @param dtm_output : string : Output file name
     @param dsm_input : string : file location (.tif)
@@ -559,7 +1017,7 @@ def import_uas_data(dtm_input, dtm_output, dsm_input, dsm_output, ortho_input, o
     @param laz_dem : DOES NOT WORK Output file name of point cloud derived DEM
     @param res : The the import resolution (Dfault = 0.5)
     @param memory : Allocate memeory for import steps (Default = 300)
-    @param nprocs : Allocate total processes used during interpolation (Default = 1)
+    @param nprocs : Total processes used during interpolation (Default = 1)
     @param overwrite : Overwrite existing files (Default = False)
 
     """
@@ -569,68 +1027,100 @@ def import_uas_data(dtm_input, dtm_output, dsm_input, dsm_output, ortho_input, o
     gs.run_command("g.region", res=res, flags="ap")
 
     print(f"Importing DTM: {dtm_output}")
-    gs.run_command("r.import",
-                   input=dtm_input,
-                   memory=memory,
-                   output=dtm_output,
-                   resample="bilinear",
-                   overwrite=overwrite
-                   )
+    gs.run_command(
+        "r.import",
+        input=dtm_input,
+        memory=memory,
+        output=dtm_output,
+        resample="bilinear",
+        overwrite=overwrite,
+    )
 
     gs.run_command("r.colors", map=dtm_output, color="elevation", flags="e")
 
     print(f"Importing DSM: {dsm_output}")
-    gs.run_command("r.import",
-                   input=dsm_input,
-                   memory=memory,
-                   output=dsm_output,
-                   resample="bilinear",
-                   overwrite=overwrite
-                   )
+    gs.run_command(
+        "r.import",
+        input=dsm_input,
+        memory=memory,
+        output=dsm_output,
+        resample="bilinear",
+        overwrite=overwrite,
+    )
 
     print(f"Importing Ortho: {ortho_output}")
-    gs.run_command("r.import",
-                   input=ortho_input,
-                   memory=memory,
-                   output=ortho_output,
-                   resample="nearest",
-                   overwrite=overwrite
-                   )
+    gs.run_command(
+        "r.import",
+        input=ortho_input,
+        memory=memory,
+        output=ortho_output,
+        resample="nearest",
+        overwrite=overwrite,
+    )
 
     print(f"Creating Ortho: {ortho_composite}")
     gs.run_command("g.region", raster=f"{ortho_output}.1", res=res, flags="ap")
 
-    gs.run_command("r.composite", red=f"{ortho_output}.1", green=f"{ortho_output}.2", blue=f"{ortho_output}.3", output=ortho_composite, overwrite=overwrite)
-#     print(f"Importing Point Cloud (DSM): {laz_output}")
-#     gs.run_command("v.in.pdal",
-#                  input=laz_input,
-#                  output=laz_output,
-#                  flags="w",
-#                  # input_srs="EPSG:4326",
-#                  overwrite=overwrite
-#               )
-#     # Set  computaional region to imported raster data
-#     gs.run_command("g.region", raster=ortho_composite, res=res, flags="ap")
+    gs.run_command(
+        "r.composite",
+        red=f"{ortho_output}.1",
+        green=f"{ortho_output}.2",
+        blue=f"{ortho_output}.3",
+        output=ortho_composite,
+        overwrite=overwrite,
+    )
+    #     print(f"Importing Point Cloud (DSM): {laz_output}")
+    #     gs.run_command("v.in.pdal",
+    #                  input=laz_input,
+    #                  output=laz_output,
+    #                  flags="w",
+    #                  # input_srs="EPSG:4326",
+    #                  overwrite=overwrite
+    #               )
+    #     # Set  computaional region to imported raster data
+    #     gs.run_command(
+    #        "g.region",
+    #        raster=ortho_composite,
+    #        res=res,
+    #        flags="ap"
+    #     )
 
-#     print(f"Generating DSM: {laz_output}")
-#     gs.run_command("v.surf.rst",
-#                  input=laz_output,
-#                  elevation=laz_dsm,
-#                  npmin=120,
-#                  segmax=25,
-#                  tension=100,
-#                  smooth=0.5,
-#                  dmin=1,
-#                  mask=ortho_composite,
-#                  nprocs=nprocs,
-#                  overwrite=overwrite
-#               )
+    #     print(f"Generating DSM: {laz_output}")
+    #     gs.run_command("v.surf.rst",
+    #                  input=laz_output,
+    #                  elevation=laz_dsm,
+    #                  npmin=120,
+    #                  segmax=25,
+    #                  tension=100,
+    #                  smooth=0.5,
+    #                  dmin=1,
+    #                  mask=ortho_composite,
+    #                  nprocs=nprocs,
+    #                  overwrite=overwrite
+    #               )
 
     print("Import Complete")
     print("*" * 100)
 
 
-def resample_uas_data(dtm, dtm_output, dsm, dsm_output, ortho, ortho_output, red, red_output, green, green_output, blue, blue_output, nir, nir_output, res, overwrite=False):
+def resample_uas_data(
+    dtm,
+    dtm_output,
+    dsm,
+    dsm_output,
+    ortho,
+    ortho_output,
+    red,
+    red_output,
+    green,
+    green_output,
+    blue,
+    blue_output,
+    nir,
+    nir_output,
+    res,
+    overwrite=False,
+):
     """
     Resamples UAS data into another resolution.
 
@@ -660,21 +1150,74 @@ def resample_uas_data(dtm, dtm_output, dsm, dsm_output, ortho, ortho_output, red
 
     # Resample DTM
     gs.run_command("g.region", raster=dtm, res=res, flags="ap")
-    gs.run_command("r.resamp.interp", input=dtm, output=dtm_output, overwrite=overwrite)
+    gs.run_command(
+        "r.resamp.interp",
+        input=dtm,
+        output=dtm_output,
+        overwrite=overwrite
+    )
     # Resample DSM
     gs.run_command("g.region", raster=dsm, res=res, flags="ap")
-    gs.run_command("r.resamp.interp", input=dsm, output=dsm_output, overwrite=overwrite)
+    gs.run_command(
+        "r.resamp.interp",
+        input=dsm,
+        output=dsm_output,
+        overwrite=overwrite
+    )
     # Resample Ortho
     gs.run_command("g.region", raster=ortho, res=3, flags="ap")
-    gs.run_command("r.resamp.interp", input=ortho, output=ortho_output, method="nearest", overwrite=True)
-    gs.run_command("r.resamp.interp", input=red, output=red_output, method="nearest", overwrite=True)
-    gs.run_command("r.resamp.interp", input=green, output=green_output, method="nearest", overwrite=True)
-    gs.run_command("r.resamp.interp", input=blue, output=blue_output, method="nearest", overwrite=True)
-    gs.run_command("r.resamp.interp", input=nir, output=nir_output, method="nearest", overwrite=True)
+    gs.run_command(
+        "r.resamp.interp",
+        input=ortho,
+        output=ortho_output,
+        method="nearest",
+        overwrite=True,
+    )
+    gs.run_command(
+        "r.resamp.interp",
+        input=red,
+        output=red_output,
+        method="nearest",
+        overwrite=True,
+    )
+    gs.run_command(
+        "r.resamp.interp",
+        input=green,
+        output=green_output,
+        method="nearest",
+        overwrite=True,
+    )
+    gs.run_command(
+        "r.resamp.interp",
+        input=blue,
+        output=blue_output,
+        method="nearest",
+        overwrite=True,
+    )
+    gs.run_command(
+        "r.resamp.interp",
+        input=nir,
+        output=nir_output,
+        method="nearest",
+        overwrite=True,
+    )
     # Set DTM an DSM color tables
-    gs.run_command("r.colors", map=f"{dtm_output},{dsm_output}", color="elevation", flags="e")
+    gs.run_command(
+        "r.colors",
+        map=f"{dtm_output},{dsm_output}",
+        color="elevation",
+        flags="e"
+    )
 
-    return dtm_output, dsm_output, ortho_output, red_output, green_output, blue_output, nir_output
+    return (
+        dtm_output,
+        dsm_output,
+        ortho_output,
+        red_output,
+        green_output,
+        blue_output,
+        nir_output,
+    )
 
 
 """
@@ -685,70 +1228,154 @@ Profile DEM data
 
 def profile_dem(dem, output, coords):
     out = f"output/{output}.csv"
-    gs.run_command("r.profile", flags="gc", input=dem, coordinates=coords, output=out, null_value="0", overwrite=True)
-    gs.run_command("v.in.ascii", input=out, output=output, separator="space", columns="x double,y double,profile double,diff double, color varchar", overwrite=True)
-    df = pd.read_csv(out, delimiter=" ", names=['x', 'y', 'profile', 'diff', 'color'])
+    gs.run_command(
+        "r.profile",
+        flags="gc",
+        input=dem,
+        coordinates=coords,
+        output=out,
+        null_value="0",
+        overwrite=True,
+    )
+    gs.run_command(
+        "v.in.ascii",
+        input=out,
+        output=output,
+        separator="space",
+        columns="x double,y double,profile double,diff double, color varchar",
+        overwrite=True,
+    )
+    fields = ["x", "y", "profile", "diff", "color"]
+    df = pd.read_csv(out, delimiter=" ", names=fields)
     return df
 
 
 def generate_profile_figure(df_ned, df_uas, df_fused, output):
     """
-    Displays maplotlib line chart comapring profiles of three elevation profiles and returns 
-    file path to the saved figure.
+    Displays maplotlib line chart comapring profiles of three
+    elevation profiles and returns file path to the saved figure.
 
     Parameters
     ==========
-    dem (Datafram): Pandas Dataframe of DEM elevation profile generated with <rapid_dem.profile> function.
-    uas (Datafram): Pandas Dataframe of UAS DEM elevation profile generated with <rapid_dem.profile> function.
-    fused (Datafram): Pandas Dataframe of Fused DEM elevation profile generated with <rapid_dem.profile> function.
+    dem (Datafram): Pandas Dataframe of DEM elevation profile
+                    generated with <rapid_dem.profile> function.
+    uas (Datafram): Pandas Dataframe of UAS DEM elevation profile
+                    generated with <rapid_dem.profile> function.
+    fused (Datafram): Pandas Dataframe of Fused DEM elevation profile
+                      generated with <rapid_dem.profile> function.
     output (str):
 
     Returns
     =======
     plt
     """
-    
-   
-    df_ned['DEMs'] = "A) USGS NED DEM"
-    df_fused['DEMs'] = "B) Fused DEM"
-    df_uas['DEMs'] = "C) UAS DEM (Registered)"
-    df_uas = df_uas[df_uas['diff'] > 0]
 
-    df_profiles = pd.concat([df_ned, df_fused, df_uas], ignore_index=True)
+    df_ned["DEMs"] = "A) USGS NED DEM"
+    df_fused["DEMs"] = "B) Fused DEM"
+    df_uas["DEMs"] = "C) UAS DEM (Registered)"
+    df_uas = df_uas[df_uas["diff"] > 0]
+
+    # df_profiles = pd.concat([df_ned, df_fused, df_uas], ignore_index=True)
 
     sns.set_theme(style="darkgrid")
-    fig = plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(15, 10))
 
-    ax = sns.lineplot(x="profile", y="diff", data=df_fused, style="DEMs", color='#0571b0', linewidth=8); #blue
-    sns.lineplot(x="profile", y="diff", data=df_ned,color='#ca0020', linewidth=3, style=True, dashes=[(2,2)], ax=ax); # red
-    sns.lineplot(x="profile", y="diff", data=df_uas, color='#ffffbf', linewidth=4, style=True, dashes=[(2,2)], ax=ax); # white
-    ax.set_xlabel('Distance (m)', fontsize=35)
-    ax.set_ylabel('Elevation (m)', fontsize=35)
+    ax = sns.lineplot(
+        x="profile",
+        y="diff",
+        data=df_fused,
+        style="DEMs",
+        color="#0571b0",
+        linewidth=8
+    )
+    # blue
+    sns.lineplot(
+        x="profile",
+        y="diff",
+        data=df_ned,
+        color="#ca0020",
+        linewidth=3,
+        style=True,
+        dashes=[(2, 2)],
+        ax=ax
+    )
+    # red
+    sns.lineplot(
+        x="profile",
+        y="diff",
+        data=df_uas,
+        color="#ffffbf",
+        linewidth=4,
+        style=True,
+        dashes=[(2, 2)],
+        ax=ax,
+    )
+    # white
+    ax.set_xlabel("Distance (m)", fontsize=35)
+    ax.set_ylabel("Elevation (m)", fontsize=35)
     ax.tick_params(labelsize=20)
-    ax.legend(loc='upper right', fontsize=40)
-    plt.setp(ax.get_legend().get_texts(), fontsize='50') # for legend text
-    plt.legend(fontsize='x-large', title_fontsize='50')
+    ax.legend(loc="upper right", fontsize=40)
+    plt.setp(ax.get_legend().get_texts(), fontsize="50")  # for legend text
+    plt.legend(fontsize="x-large", title_fontsize="50")
 
-    fusion_start = [df_uas['profile'].loc[0:0]]
-    fusion_start = df_uas.head(1)[['profile']].values[0]
-    fusion_end = df_uas.tail(1)[['profile']].values[0]
-    plt.axvline(fusion_start, color='grey', linestyle='dashed',label="", linewidth=1.5) #min
-    plt.axvline(fusion_end, color='grey', linestyle='dashed',label="Fusion Boundary", linewidth=1.5) #min
+    fusion_start = [df_uas["profile"].loc[0:0]]
+    fusion_start = df_uas.head(1)[["profile"]].values[0]
+    fusion_end = df_uas.tail(1)[["profile"]].values[0]
+    plt.axvline(
+        fusion_start, color="grey", linestyle="dashed", label="", linewidth=1.5
+    )  # min
+    plt.axvline(
+        fusion_end,
+        color="grey",
+        linestyle="dashed",
+        label="Fusion Boundary",
+        linewidth=1.5,
+    )
 
-    # plt.text(374.5,132.25,'Pond',backgroundcolor="white", va="top", ha="left", fontsize=18)
-    # plt.hlines(132.65, 371, 403, color="black")
+    ned_line = mlines.Line2D(
+        [],
+        [],
+        color="#ca0020",
+        marker="",
+        linestyle="dashed",
+        markersize=15,
+        linewidth=4,
+        label="USGS NED DEM",
+    )
+    uas_line = mlines.Line2D(
+        [],
+        [],
+        color="#ffffbf",
+        marker="",
+        linestyle="dashed",
+        markersize=15,
+        linewidth=4,
+        label="UAS DEM (Registered)",
+    )
+    fused_line = mlines.Line2D(
+        [],
+        [],
+        color="#0571b0",
+        marker="",
+        markersize=15,
+        linewidth=8,
+        label="Fused DEM",
+    )
+    boundary_line = mlines.Line2D(
+        [],
+        [],
+        color="grey",
+        marker="",
+        linestyle="dashed",
+        linewidth=1.5,
+        label="Fusion Boundary",
+    )
 
-    import matplotlib.patches as mpatches
-    import matplotlib.lines as mlines
-
-    ned_line = mlines.Line2D([], [], color='#ca0020', marker='', linestyle="dashed", markersize=15, linewidth=4, label='USGS NED DEM')
-    uas_line = mlines.Line2D([], [], color='#ffffbf', marker='', linestyle="dashed", markersize=15,  linewidth=4, label='UAS DEM (Registered)')
-    fused_line = mlines.Line2D([], [], color='#0571b0', marker='', markersize=15, linewidth=8, label='Fused DEM')
-    boundary_line = mlines.Line2D([], [], color='grey', marker='', linestyle="dashed", linewidth=1.5, label='Fusion Boundary')
-
-
-    ax.legend(loc='lower center', fontsize=25, handles=[ned_line, uas_line, fused_line, boundary_line])
-
+    ax.legend(
+        loc="lower center",
+        fontsize=25,
+        handles=[ned_line, uas_line, fused_line, boundary_line],
+    )
 
     # plt.tight_layout()
     # save_location = f"output/{output}.png"
@@ -756,6 +1383,37 @@ def generate_profile_figure(df_ned, df_uas, df_fused, output):
     # plt.savefig(save_location, bbox_inches='tight', dpi=300)
     # sns.set_theme(style="white", palette=None)
     return plt
+
+
+def perc_err(t, e):
+    """
+    Calculate % error
+    """
+    try:
+        err = abs(round(((e - t) / t) * 100, 2))
+    except TypeError:
+        return None
+
+    return err
+
+
+def get_prof_diff(t, e):
+    """
+    Calcuate difference between profiles
+    """
+    try:
+        diff = t - float(e)
+    except TypeError:
+        return None
+
+    return diff
+
+
+def rmse(df, predictions, targets):
+    """
+    Calcuate the root mean square error
+    """
+    return np.sqrt(((df[predictions] - df[targets]) ** 2).mean())
 
 
 """
@@ -774,9 +1432,18 @@ def geographic_correct_dem(dem, output, row_shift=0, column_shift=0):
     @return output Shifted raster name
     """
     print(("#" * 25) + " Geographic Shift " + ("#" * 25))
-    print(f"Inputs: dem:{dem},output: {output},row_shift: {row_shift}, column_shift: {column_shift}")
+    print(
+        f"""Inputs:
+              dem:{dem}
+              output: {output}
+              row_shift: {row_shift}
+              column_shift: {column_shift}
+        """
+    )
 
-    gs.mapcalc(f"{output} = if({dem} >= 0, {dem}[{row_shift},{column_shift}], null())")
+    gs.mapcalc(
+        f"{output} = if({dem} >= 0, {dem}[{row_shift},{column_shift}], null())"
+    )
     return output
 
 
@@ -810,7 +1477,9 @@ def edge_mask(uas, thres=-1, e=None):
     else:
         thin = f"{mask}_thin"  # The thinned mask
         print(f"Thin UAS Mask: {thin}")
-        gs.run_command("r.grow", overwrite=True, input=mask, output=thin, radius=thres)
+        gs.run_command(
+            "r.grow", overwrite=True, input=mask, output=thin, radius=thres
+        )
         gs.mapcalc(f"{uas_thin} = if({thin}, {uas}, null())")
 
     print(f"Thin UAS: {uas_thin}")
@@ -827,10 +1496,25 @@ def ground_dem(uas, uas_vert_c, dem, thres=0.1):
     """
     print(("#" * 25) + " Ground DEM " + ("#" * 25))
     ground_dem = "ground_dem"
-    gs.mapcalc(f"{ground_dem} = if({uas_vert_c} - {dem} <= {thres}, {uas},null())")
-    print(f"Output: Uncorrected Ground DEM< (UAS_Vert_Corrected - DEM < {thres}): {ground_dem}")
+    gs.mapcalc(
+        f"{ground_dem} = if({uas_vert_c} - {dem} <= {thres}, {uas}, null())"
+    )
+    print(
+        f"""
+            Output:
+                Uncorrected Ground DEM < (Corrected UAS - DEM < {thres}):
+                    {ground_dem}
+        """
+    )
     ground_dem_point_sample = "ground_dem_point_sample"
-    gs.run_command("r.random", flags="d", input=ground_dem, npoints=20, raster=ground_dem_point_sample, seed=1)
+    gs.run_command(
+        "r.random",
+        flags="d",
+        input=ground_dem,
+        npoints=20,
+        raster=ground_dem_point_sample,
+        seed=1,
+    )
     return ground_dem_point_sample
 
 
@@ -841,7 +1525,16 @@ def report_diff_stats(raster):
     tb_median = float(univar["median"])
     dmin = float(univar["min"])
     dmax = float(univar["max"])
-    print(f"{raster}: Mean: {mean}, STD: {stddev}, Median: {tb_median}, Min: {dmin}, Max: {dmax}")
+    print(
+        f"""
+        {raster}
+        Mean: {mean}
+        STD: {stddev}
+        Median: {tb_median}
+        Min: {dmin}
+        Max: {dmax}
+        """
+    )
     return univar
 
 
@@ -891,7 +1584,6 @@ def get_diff(uas, dem, mean_thr, output):
     mean = float(univar["mean"])
     median = float(univar["median"])
     stddev = float(univar["stddev"])
-    # print("Difference: {mean:.1f} ± {stddev:.1f}".format(mean=mean, stddev=stddev))
     # test for systematic shift:
     print(f"Difference: Mean:{mean}, STD: {stddev}, Median: {median}")
     _min = float(univar["min"])
@@ -927,7 +1619,14 @@ def vertically_corrected_uas(uas, dem, shift, output):
     mean = float(univar["mean"])
     stddev = float(univar["stddev"])
     median = float(univar["median"])
-    print(f"Vertically Corrected Stats: Mean: {mean}, STD: {stddev}, Median: {median}")
+    print(
+        f"""
+        Vertically Corrected Stats
+            Mean: {mean}
+            STD: {stddev}
+            Median: {median}
+        """
+    )
     # report_diff_stats(new)
     # TMP_RAST.append(new)
     gs.mapcalc(diff + " = " + new + " - " + dem)
@@ -936,7 +1635,14 @@ def vertically_corrected_uas(uas, dem, shift, output):
     mean = float(univar["mean"])
     stddev = float(univar["stddev"])
     median = float(univar["median"])
-    print(f"Difference (Vertically Corrected UAS - DEM) Stats: Mean: {mean}, STD: {stddev}, Median: {median}")
+    print(
+        f"""
+        Difference (Vertically Corrected UAS - DEM) Stats
+            Mean: {mean}
+            STD: {stddev}
+            Median: {median}
+        """
+    )
     # TMP_RAST.append(diff)
 
     return new, diff
@@ -944,18 +1650,23 @@ def vertically_corrected_uas(uas, dem, shift, output):
 
 def patch(uas, dem, output, ps, ta, dr):
     print(("#" * 25) + " Patch " + ("#" * 25))
-    print(f"Inputs: uas:{uas},dem:{dem},output:{output},ps:{ps},ta:{ta},dr{dr}")
+    print(
+        f"Inputs: uas:{uas},dem:{dem},output:{output},ps:{ps},ta:{ta},dr{dr}"
+    )
     overlap = f"{output}_overlap"
     gs.run_command("g.region", raster=dem)
     gs.run_command(
-        "r.patch.smooth", input_a=uas, input_b=dem, output=output,
+        "r.patch.smooth",
+        input_a=uas,
+        input_b=dem,
+        output=output,
         # smooth_dist=10,
         overlap=overlap,
         parallel_smoothing=ps,
         transition_angle=ta,
         difference_reach=dr,
         # blend_mask="fenton_edge_mask_odm_dtm_3m_pmask",
-        flags="s"
+        flags="s",
     )
     print(f"Output: Overlap: {overlap}")
     print(f"Output: Fused DEM {output}")
@@ -968,19 +1679,24 @@ def patch(uas, dem, output, ps, ta, dr):
 
 
 def fusion(dem, uas, output, ps=5, ta=2, dr=3, offset_value=0, usgs=True):
-    import grass.script as gs
+
     buffer = 0.5
     gs.run_command("g.region", raster=uas)
     uas_reg = gs.region(uas)
-    avg_wh = ((uas_reg["n"] - uas_reg["s"]) + (uas_reg["e"] - uas_reg["w"])) / 2.0
+    avg_wh = (
+        (
+            (uas_reg["n"] - uas_reg["s"]) + (uas_reg["e"] - uas_reg["w"])
+        ) / 2.0
+    )
     n = uas_reg["n"] + avg_wh * buffer
     s = uas_reg["s"] - avg_wh * buffer
     e = uas_reg["e"] + avg_wh * buffer
     w = uas_reg["w"] - avg_wh * buffer
     gs.run_command("g.region", n=n, e=e, s=s, w=w)
-    # import_dsm(dem, output_dir='/tmp', input_srs='EPSG:2264', resolution=3, nprocs=4)
     if usgs:
-        # import_dsm(dem, output_dir='/tmp', input_srs='EPSG:2264', resolution=3, nprocs=8)
+        # import_dsm(
+        #   dem, output_dir='/tmp', input_srs='EPSG:2264', resolution=3
+        # )
         import_dem(dem, "/tmp", 5)
     gs.use_temp_region()
     uas = geographic_correct_dem(uas, "geo_correct_uas")
@@ -991,9 +1707,289 @@ def fusion(dem, uas, output, ps=5, ta=2, dr=3, offset_value=0, usgs=True):
     # Reshift to improve vert overap accuracy
     ground = ground_dem(uas, uas_vert_c, dem)
     diff, univar_shift = get_diff(ground, dem, 2, output)
-    if (abs(offset_value) > 0):
+    if abs(offset_value) > 0:
         print(f"Setting Offset Manaully: {offset_value}")
         univar_shift = offset_value
     uas, diff = vertically_corrected_uas(uas, dem, univar_shift, output)
     patch(uas, dem, output, ps, ta, dr)
     gs.del_temp_region()
+
+
+"""
+Analyze Hydrology
+=================
+"""
+
+
+def simwe(elev, nlcd, output):
+    """
+    Run SIMWE with spatially variable parameterization of mannings
+    c and rainfall excess rates to simulate a 100 year flood event
+    in Wake County NC.
+    """
+
+    dx = f"dx_{output}"
+    dy = f"dy_{output}"
+    mannings = f"mancover_{output}"
+    raincover = f"raincover_{output}"
+    runoff_coef = f"runoff_coef_{output}"
+    freq_factor = 1.25
+    rain_intensity = 79.248
+    depth = f"depth_variable_rainfall_{output}"
+    print(f"Depth: {depth}")
+
+    discharge = f"discharge_variable_rainfall_{output}"
+    print(f"Discharge: {discharge}")
+    # compute dx, dy
+    gs.run_command(
+        "r.slope.aspect", elevation=elev, dx=dx, dy=dy, overwrite=True
+    )
+
+    # # Calculate manning coefficient
+    gs.run_command(
+        "r.recode",
+        input=nlcd,
+        output=mannings,
+        rules="grass_config/classified_to_mannings.txt",
+    )
+
+    # # Calculate variable rainfall using nlcd
+    gs.run_command(
+        "r.recode",
+        input=nlcd,
+        output=runoff_coef,
+        rules="grass_config/classified_runoff_coefficent.txt",
+    )
+    rain_fall_excess_calc = f"""
+        (
+            {runoff_coef} * {freq_factor} * {rain_intensity}
+        )
+        """
+    gs.run_command(
+        "r.mapcalc",
+        expression=f"""
+            {raincover} = if(
+                {rain_fall_excess_calc} > {rain_intensity},
+                {rain_intensity},
+                {rain_fall_excess_calc}
+            )
+            """,
+        overwrite=True,
+    )
+
+    # NOAA ATLAS 14 POINT PRECIPITATION FREQUENCY ESTIMATES
+    # Get 100 year flood event critiera (Percipiation frequency)
+    # https://hdsc.nws.noaa.gov/hdsc/pfds/pfds_map_cont.html?bkmrk=nc
+
+    # Duration | 100 yr
+    # 30 min     2.33 in
+    # 60 min     3.21 in (79.248mm)
+
+    # Calculate SCS Curve Number (CN)
+    # https://serc.carleton.edu/hydromodules/steps/creating_excess.html
+    # initial abstraction (la) = 0.2S # 20% of the total maximum storage
+    # or retention of watershed
+    # continous abstraction (Fa) = S * (P-la)\(P-la + S)
+    # Total Retention (S) = 0
+    # Total Rainfall (P) = 79.248mm
+
+    # Rational Method
+    # C
+    # Cf = 1.25
+
+    gs.run_command(
+        "r.sim.water",
+        elevation=elev,
+        dx=dx,
+        dy=dy,
+        # rain_value=79.248,
+        rain=raincover,
+        infil_value=0,
+        man=mannings,
+        depth=depth,
+        disch=discharge,
+        nwalk=1000000,
+        nprocs=14,
+        output_step=60,  # Time step in minutes
+        niterations=60,  # Total time of event in minutes
+    )
+
+    # Extract flooded pixels with a depth >= 0.025m (~1in)
+    filtered_depth = f"pf_100yr_{output}"
+    print(f"Filtered Depth: {filtered_depth}")
+    expression = f"{filtered_depth} = if({depth} >= 0.025,  {depth}, null())"
+    gs.run_command("r.mapcalc", expression=expression, overwrite=True)
+    gs.run_command("r.colors", map=filtered_depth, raster=depth)
+
+    return filtered_depth
+
+
+def simweSimple(elev, output):
+    """
+    Simplified overland flow simulation using constants
+    for friction, infiltration,
+    """
+    dx = f"dx_{output}"
+    dy = f"dy_{output}"
+    # error = f"simwe_error_{output}"
+    walkers = f"walkers_{output}"
+    print(f"Walkers: {walkers}")
+
+    depth = f"depth_{output}"
+    print(f"Depth: {depth}")
+
+    discharge = f"discharge_{output}"
+    print(f"Discharge: {discharge}")
+    # compute dx, dy
+    gs.run_command(
+        "r.slope.aspect", elevation=elev, dx=dx, dy=dy, overwrite=True
+    )
+
+    gs.run_command(
+        "r.sim.water",
+        elevation=elev,
+        dx=dx,
+        dy=dy,
+        depth=depth,
+        disch=discharge,
+        rain_value=100,
+        infil_value=0,
+        man_value=0.1,
+        output_step=60,  # Time step in minutes
+        niterations=60,  # Total time of event in minutes
+        # rain_value=30, #Rainfall excess rate unique value [mm/hr]
+        # infil_value=0, # Runoff infiltration rate unique value [mm/hr]
+        # man_value=0.15, # Manning's n unique value
+        # output_step=1, # Time step in minutes
+        # niterations=30, # Total time of event in minutes
+        # hmax=0.2, # Threshold water depth [m].
+        # halpha=8.0, #Diffusion increase constant
+        # hbeta=1.0, #Weighting factor for water flow velocity vector
+        flags="",  # t
+        # error=error,
+        # walkers_output=walkers,
+        nwalk=100000,  # Set Back to 1m
+        nprocs=14,
+        random_seed="1",
+    )
+
+
+def analyze_hydrology(
+    dem,
+    uas,
+    fused,
+    drainage,
+    stream,
+    basin,
+    accumulation,
+    threshold,
+    memory=10000,
+    overwrite=False,
+):
+    """
+    Calculates watersheds, streams, drainage direction,
+    flow direction, and runs simplified overland flow model.
+    """
+    print("*" * 50)
+
+    if uas:
+        print("Starting Fusion...")
+        fusion(dem=dem, uas=uas, output=fused, usgs=False)
+        print(f"Fused: {fused}")
+    else:
+        # Set fused variable to dem if no fusion is performed
+        fused = dem
+
+    # Need to reset the region to the whole study area
+    gs.run_command("g.region", raster=dem, res=3, flags="pa")
+    print("Creating Watersheds...")
+    gs.run_command(
+        "r.watershed",
+        elevation=fused,
+        threshold=threshold,
+        drainage=drainage,
+        stream=stream,
+        basin=basin,
+        accumulation=accumulation,
+        memory=memory,
+        overwrite=overwrite,
+    )
+
+    print("Extracting Streams...")
+    gs.run_command(
+        "r.stream.extract",
+        elevation=fused,
+        threshold=threshold,
+        mexp=0,
+        memory=memory,
+        stream_raster=f"{stream}_ext",
+        stream_vector=f"{stream}_ext",
+        overwrite=overwrite,
+    )
+    print("Converting Basins to Vectors...")
+    gs.run_command(
+        "r.to.vect",
+        input=basin,
+        output=basin,
+        type="area",
+        overwrite=overwrite
+    )
+
+    print("Running SIMWE...")
+    simweSimple(fused, fused)
+    print("*" * 50)
+
+
+def generate_depth_map(depth, flooding, relief, depth_filter=0.075):
+    """
+    @param depth_filter : float : 0.075m is ~0.25ft
+    """
+    print(f"Flooding Depth: {flooding}")
+    expression = f"{flooding} = if({depth} >= {depth_filter}, {depth}, null())"
+    gs.run_command("r.mapcalc", expression=expression, overwrite=True)
+    gs.run_command("r.colors", map=flooding, raster=depth)
+    output = f"output/{flooding}.png"
+    print(f"Image Save Location: {output}")
+
+    flooding_map = gj.GrassRenderer(height=900, width=1400, filename=output)
+    flooding_map.d_erase()
+    flooding_map.d_rast(map=relief)
+    flooding_map.d_rast(map=flooding)
+    flooding_map.d_legend(
+        raster=flooding, at=(10, 50, 2, 6), title="Depth (m)", flags="l"
+    )
+
+    flooding_map.d_barscale(at=(1, 6, 2, 2), units="meters", flags="n")
+    return flooding_map.show()
+
+
+def generate_discharge_map(disch, flooding, relief, disch_filter=0.075):
+    """
+    @param depth_filter : float : 0.075m is ~0.25ft
+    """
+    print(f"Flooding Depth: {flooding}")
+    expression = f"""
+        {flooding} =
+            if(
+                {disch} >= {disch_filter},
+                {disch},
+                null()
+            )
+        """
+    gs.run_command("r.mapcalc", expression=expression, overwrite=True)
+    gs.run_command("r.colors", map=flooding, raster=disch)
+    output = f"output/{flooding}.png"
+    print(f"Image Save Location: {output}")
+
+    flooding_map = gj.GrassRenderer(filename=output)
+    flooding_map.d_erase()
+    flooding_map.d_rast(map=relief)
+    flooding_map.d_rast(map=flooding)
+
+    flooding_map.d_legend(
+        raster=flooding, at=(10, 50, 2, 6),
+        title="Discharge (m3/s)"
+    )
+
+    flooding_map.d_barscale(at=(1, 6, 2, 2), units="meters", flags="n")
+    return flooding_map.show()

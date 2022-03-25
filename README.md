@@ -12,8 +12,8 @@ Binder containing submitted results to the "Rapid-DEM: Rapid Topographic Updates
 
 ## Scripts
 
-**rapid-dem.py**: Helper scripts used in Notebooks.
-**gee_helpers.py**: Google Earth Engine helper scripts used in Notebooks.
+- **rapid_dem.py**: Helper scripts used in Notebooks.
+- **gee_helpers.py**: Google Earth Engine helper scripts used in Notebooks.
 
 ## Project Data
 
