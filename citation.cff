@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "White"
+  given-names: "Corey T."
+  orcid: "https://orcid.org/0000-0002-2903-9924"
+- family-names: "Reckling"
+  given-names: "William"
+  orcid: "https://orcid.org/0000-0003-0426-6693"
+- family-names: "Petrasova"
+  given-names: "Anna"
+  orcid: "https://orcid.org/0000-0002-5120-5538"
+- family-names: "Meentemeyer"
+  given-names: "Ross K."
+  orcid: "https://orcid.org/0000-0002-1247-6212"
+- family-names: "Mitasova"
+  given-names: "Helena"
+  orcid: "https://orcid.org/0000-0002-6906-3398"
+title: "Rapid-DEM"
+version: 0.0.1
+doi: 10.17605/OSF.IO/YG6H8
+date-released: 2022-04-01
+url: "https://osf.io/yg6h8/"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "White"
+    given-names: "Corey T."
+    orcid: "https://orcid.org/0000-0002-2903-9924"
+  - family-names: "Reckling"
+    given-names: "William"
+    orcid: "https://orcid.org/0000-0003-0426-6693"
+  - family-names: "Petrasova"
+    given-names: "Anna"
+    orcid: "https://orcid.org/0000-0002-5120-5538"
+  - family-names: "Meentemeyer"
+    given-names: "Ross K."
+    orcid: "https://orcid.org/0000-0002-1247-6212"
+  - family-names: "Mitasova"
+    given-names: "Helena"
+    orcid: "https://orcid.org/0000-0002-6906-3398"
+  doi: "10.3390/rs14071718"
+  journal: "Remote Sensing"
+  month: 4
+  title: "Rapid-DEM: Rapid Topographic Updates through Satellite Change Detection and UAS Data Fusion"
+  url: "https://www.mdpi.com/2072-4292/14/7/1718"
+  issue: 7
+  article-number: 1718
+  issn: "2072-4292"
+  volume: 14
+  year: 2022

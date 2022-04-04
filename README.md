@@ -1,6 +1,6 @@
 # rapid-dem-binder
 
-Binder containing submitted results to the "Rapid-DEM: Rapid Topographic Updates through Satellite Change Detection and UAS Data Fusion" (White C.T. et al., 2022)
+Binder containing submitted results to the "Rapid-DEM: Rapid Topographic Updates through Satellite Change Detection and UAS Data Fusion" (White et al., 2022)
 
 ## Workflow Notebooks
 
@@ -21,7 +21,7 @@ Binder containing submitted results to the "Rapid-DEM: Rapid Topographic Updates
 
 ## Citation
 
-TBD (Submitted to MDPI *Remote Sensing* on 3/1/22)j
+White, C.T.; Reckling, W.; Petrasova, A.; Meentemeyer, R.K.; Mitasova, H. Rapid-DEM: Rapid Topographic Updates through Satellite Change Detection and UAS Data Fusion. Remote Sens. 2022, 14, 1718. https://doi.org/10.3390/rs14071718
 
 ## License
 
